@@ -26,11 +26,9 @@ const (
 )
 
 type Message struct {
-	Type      MessageType
-	Body      string
-	PID       int
-	RequestID string
-	URL       string
-	Status    int
-	ExitCode  int
+	Type     MessageType
+	Body     string
+	PID      int
+	ExitCode int
+	Request  Request
 }

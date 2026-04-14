@@ -2,13 +2,17 @@ package proxy
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"termtap.dev/internal/model"
 )
 
@@ -40,41 +44,86 @@ func proxyHandler(ch chan<- model.Message) http.Handler {
 		}
 
 		start := time.Now()
-		// requestPreview, err := readAndRestoreBody(&req.Body)
-		// if err != nil {
-		// 	http.Error(w, "failed to read request body", http.StatusBadRequest)
-		// 	log.Printf("!! read request body %s %s: %v", req.Method, req.URL.String(), err)
-		// 	return
-		// }
+
+		request := model.Request{
+			ID:           uuid.New(),
+			ResponseData: []byte{},
+			RequestData:  []byte{},
+			URL:          "",
+			Status:       -1,
+			Method:       "",
+			Duration:     0,
+			Pending:      true,
+			Failed:       false,
+			StartTime:    start,
+		}
+
+		requestPreview, err := readAndRestoreBody(&req.Body)
+		if err != nil {
+			ch <- model.Message{
+				Type:    model.MessageTypeWarn,
+				Body:    fmt.Sprintf("(%s) failed to read request body", request.ID),
+				Request: request,
+			}
+		} else {
+			request.RequestData = []byte(requestPreview)
+		}
 
 		outReq := req.Clone(req.Context())
 		outReq.RequestURI = ""
+
+		request.URL = outReq.URL.Path
+		request.QueryString = outReq.URL.RawQuery
+		request.QueryMap = outReq.URL.Query()
+		request.Host = outReq.Host
+		request.Method = outReq.Method
+		request.RequestHeaders = outReq.Header
+		request.RawURL = outReq.URL.String()
+
 		ch <- model.Message{
-			Type: model.MessageTypeRequestStarted,
-			Body: fmt.Sprintf("-> %s %s", outReq.Method, outReq.URL.String()),
+			Type:    model.MessageTypeRequestStarted,
+			Body:    fmt.Sprintf("-> %+v", request),
+			Request: request,
 		}
 
 		resp, err := transport.RoundTrip(outReq)
 		if err != nil {
-			http.Error(w, "bad gateway", http.StatusBadGateway)
+			status := statusFromUpstreamError(req, resp, err)
+
+			http.Error(w, http.StatusText(status), status)
+			request.Pending = false
+			request.Failed = true
+			request.Duration = time.Since(start).Round(time.Microsecond)
+			request.Status = status
+
 			ch <- model.Message{
-				Type: model.MessageTypeRequestFailed,
-				Body: fmt.Sprintf("upstream error for %s %s: %v", outReq.Method, outReq.URL.String(), err),
+				Type:    model.MessageTypeRequestFailed,
+				Body:    fmt.Sprintf("upstream error for %s %s: %v", outReq.Method, outReq.URL.String(), err),
+				Request: request,
 			}
 			return
 		}
 		defer resp.Body.Close()
 
-		// responsePreview, err := readAndRestoreBody(&resp.Body)
-		// if err != nil {
-		// 	http.Error(w, "bad gateway", http.StatusBadGateway)
-		// 	log.Printf("!! read response body %s %s: %v", outReq.Method, outReq.URL.String(), err)
-		// 	return
-		// }
+		responsePreview, err := readAndRestoreBody(&resp.Body)
+		if err != nil {
+			ch <- model.Message{
+				Type:    model.MessageTypeWarn,
+				Body:    fmt.Sprintf("(%s) failed to read response body", request.ID),
+				Request: request,
+			}
+		} else {
+			request.ResponseData = []byte(responsePreview)
+		}
 
 		copyHeader(w.Header(), resp.Header)
 		w.WriteHeader(resp.StatusCode)
 		if _, err := io.Copy(w, resp.Body); err != nil {
+			request.Pending = false
+			request.Failed = true
+			request.Duration = time.Since(start).Round(time.Microsecond)
+			request.Status = resp.StatusCode
+
 			ch <- model.Message{
 				Type: model.MessageTypeRequestFailed,
 				Body: fmt.Sprintf("write response body %s %s: %v", outReq.Method, outReq.URL.String(), err),
@@ -82,14 +131,15 @@ func proxyHandler(ch chan<- model.Message) http.Handler {
 			return
 		}
 
+		request.Duration = time.Since(start).Round(time.Microsecond)
+		request.Status = resp.StatusCode
+		request.ResponseHeaders = resp.Header
+		request.Pending = false
+
 		ch <- model.Message{
-			Type: model.MessageTypeRequestFinished,
-			Body: fmt.Sprintf("<- %s %s %d %s",
-				outReq.Method,
-				outReq.URL.String(),
-				resp.StatusCode,
-				time.Since(start).Round(time.Millisecond),
-			),
+			Type:    model.MessageTypeRequestFinished,
+			Body:    fmt.Sprintf("<- %+v %s", request, formatHeaders(resp.Request.Header)),
+			Request: request,
 		}
 	})
 }
@@ -139,4 +189,26 @@ func formatHeaders(headers http.Header) string {
 	sort.Strings(parts)
 
 	return strings.Join(parts, ", ")
+}
+
+// BUG: Not sure if this actually works, seems to favor the 502
+func statusFromUpstreamError(req *http.Request, resp *http.Response, err error) int {
+	if resp != nil {
+		return resp.StatusCode
+	}
+
+	if errors.Is(req.Context().Err(), context.Canceled) {
+		return http.StatusBadGateway
+	}
+
+	if errors.Is(err, context.DeadlineExceeded) {
+		return http.StatusGatewayTimeout
+	}
+
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		return http.StatusGatewayTimeout
+	}
+
+	return http.StatusBadGateway
 }

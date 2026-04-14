@@ -18,13 +18,14 @@ func StartProcess(cmd model.Command, addr string, ch chan<- model.Message, sigCh
 
 	proc := process.NewProcess(cmd, addr, ch)
 
-	if err := proc.Start(); err != nil {
+	if err := proc.Exec.Start(); err != nil {
 		ch <- model.Message{
 			Type: model.MessageTypeProcessExited,
 			Body: fmt.Sprintf("%q", err),
 		}
 		return
 	}
+	process.UpdateStatus(proc, true, ch)
 
 	// Listen for SIGTERM from main process
 	go func() {
@@ -32,23 +33,25 @@ func StartProcess(cmd model.Command, addr string, ch chan<- model.Message, sigCh
 
 		ch <- model.Message{
 			Type: model.MessageTypeProcessSignaled,
-			Body: fmt.Sprintf("process with pid '%d' is being killed", proc.Process.Pid),
-			PID:  proc.Process.Pid,
+			Body: fmt.Sprintf("process with pid '%d' is being killed", proc.Exec.Process.Pid),
+			PID:  proc.Exec.Process.Pid,
 		}
 
-		if proc.Process != nil {
-			_ = proc.Process.Signal(sig)
+		if proc.Exec != nil {
+			_ = proc.Exec.Process.Signal(sig)
+			process.UpdateStatus(proc, false, ch)
 		}
 	}()
 
-	if err := proc.Wait(); err != nil {
+	if err := proc.Exec.Wait(); err != nil {
 		if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 			ch <- model.Message{
 				Type:     model.MessageTypeProcessExited,
-				Body:     "process killed itself",
-				PID:      proc.Process.Pid,
+				Body:     fmt.Sprintf("process pid '%d' exited by itself", proc.Exec.Process.Pid),
+				PID:      proc.Exec.Process.Pid,
 				ExitCode: exitErr.ExitCode(),
 			}
+			process.UpdateStatus(proc, false, ch)
 			return
 		}
 
@@ -56,6 +59,7 @@ func StartProcess(cmd model.Command, addr string, ch chan<- model.Message, sigCh
 			Type: model.MessageTypeFatal,
 			Body: fmt.Sprintf("%q", err),
 		}
+		process.UpdateStatus(proc, false, ch)
 		return
 	}
 

@@ -28,11 +28,15 @@ func NewProxyServer(addr string, ch chan<- model.Message) (*model.ProxyServer, e
 }
 
 // BUG: Not sure what all this does
-func Destory(ps *model.ProxyServer) {
+func Destory(ps *model.ProxyServer, ch chan<- model.Message) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
 	if ps != nil && ps.Server != nil {
 		_ = ps.Server.Shutdown(ctx)
+		ch <- model.Message{
+			Type: model.MessageTypeProxyStopped,
+			Body: "proxy server was destroyed",
+		}
 	}
 }

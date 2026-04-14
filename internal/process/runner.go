@@ -15,7 +15,7 @@ func CommandString(c model.Command) string {
 	return fmt.Sprintf("%s %s", c.Name, strings.Join(c.Args, " "))
 }
 
-func NewProcess(cmd model.Command, addr string, ch chan<- model.Message) *exec.Cmd {
+func NewProcess(cmd model.Command, addr string, ch chan<- model.Message) *model.Process {
 	proc := exec.Command(cmd.Name, cmd.Args...)
 
 	injectEnv(proc, addr)
@@ -42,7 +42,11 @@ func NewProcess(cmd model.Command, addr string, ch chan<- model.Message) *exec.C
 		go readPipe(stderr, model.MessageTypeProcessStderr, ch)
 	}
 
-	return proc
+	return &model.Process{
+		Command: cmd,
+		Exec:    proc,
+		Running: false,
+	}
 }
 
 func injectEnv(proc *exec.Cmd, addr string) {
@@ -68,5 +72,35 @@ func readPipe(pipe io.Reader, t model.MessageType, ch chan<- model.Message) {
 			Type: t,
 			Body: scanner.Text(),
 		}
+	}
+}
+
+func UpdateStatus(proc *model.Process, running bool, ch chan<- model.Message) {
+	if proc == nil {
+		return
+	}
+
+	if proc.Running == running {
+		return
+	}
+
+	proc.Running = running
+
+	var (
+		t      model.MessageType
+		status string
+	)
+	if running {
+		t = model.MessageTypeProcessStarted
+		status = "running"
+	} else {
+		t = model.MessageTypeProcessExited
+		status = "stopped"
+	}
+
+	ch <- model.Message{
+		Type: t,
+		Body: fmt.Sprintf("Set process pid '%d' status to %s", proc.Exec.Process.Pid, status),
+		PID:  proc.Exec.Process.Pid,
 	}
 }

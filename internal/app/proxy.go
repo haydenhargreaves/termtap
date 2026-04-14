@@ -16,7 +16,7 @@ func StartProxy(addr string, ch chan<- model.Message) {
 		}
 		return
 	}
-	defer proxy.Destory(ps)
+	defer proxy.Destory(ps, ch)
 
 	ch <- model.Message{
 		Type: model.MessageTypeProxyStarting,
