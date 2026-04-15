@@ -14,7 +14,7 @@ func (m Model) View() string {
 
 	return strings.Join([]string{
 		"termtap - live session",
-		fmt.Sprintf("events=%d requests=%d", len(m.events), len(m.requestOrder)),
+		fmt.Sprintf("events=%d requests=%d", len(m.events), len(m.requests)),
 		"keys: q/esc/ctrl+c quit",
 		"",
 		"Recent events:",
@@ -42,22 +42,16 @@ func (m Model) renderEvents(limit int) string {
 }
 
 func (m Model) renderRequests(limit int) string {
-	if len(m.requestOrder) == 0 {
+	if len(m.requests) == 0 {
 		return "  (none yet)"
 	}
 
-	start := len(m.requestOrder) - limit
-	if start < 0 {
-		start = 0
-	}
+	start := max(0, len(m.requests)-limit)
 
-	rows := make([]string, 0, len(m.requestOrder)-start)
-	for i := start; i < len(m.requestOrder); i++ {
-		id := m.requestOrder[i]
-		req, ok := m.requests[id]
-		if !ok {
-			continue
-		}
+	// Traverse backwards since we don't have a stack
+	rows := make([]string, 0, len(m.requests)-start)
+	for i := len(m.requests) - 1; i >= start; i-- {
+		req := m.requests[i]
 
 		state := "done"
 		if req.Pending {

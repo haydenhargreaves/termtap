@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/google/uuid"
 	"termtap.dev/internal/model"
 )
 
@@ -32,7 +31,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case EventMsg:
 		m.pushEvent(msg.value)
 		m.applyMessage(msg.value)
-		return m, waitForAppMessage(m.msgCh)
+		return m, waitForEvent(m.channel)
 	}
 
 	return m, nil
@@ -48,30 +47,29 @@ func (m *Model) pushEvent(msg model.Event) {
 func (m *Model) applyMessage(msg model.Event) {
 	switch msg.Type {
 	case model.EventTypeRequestStarted:
-		m.upsertRequest(msg.Request, true)
+		m.createRequest(msg.Request)
 	case model.EventTypeRequestFinished, model.EventTypeRequestFailed:
-		m.upsertRequest(msg.Request, false)
+		m.updateRequest(msg.Request)
 	}
 }
 
-func (m *Model) upsertRequest(req model.Request, addIfMissing bool) {
-	if req.ID == uuid.Nil {
-		return
-	}
+func (m *Model) createRequest(req model.Request) {
+	m.requests = append(m.requests, req)
 
-	_, exists := m.requests[req.ID]
-	if !exists && !addIfMissing {
-		return
+	// If we passed the max, delete the first one
+	// Maybe we should notify the user?
+	if len(m.requests) > maxRequests {
+		m.requests = m.requests[1:]
 	}
+}
 
-	if !exists {
-		m.requestOrder = append(m.requestOrder, req.ID)
-		if len(m.requestOrder) > maxRequests {
-			drop := m.requestOrder[0]
-			delete(m.requests, drop)
-			m.requestOrder = m.requestOrder[1:]
+func (m *Model) updateRequest(req model.Request) {
+	// Traverse backward, since the newest one is at the end, and its likely we will be
+	// updated a new request.
+	for i := len(m.requests) - 1; i >= 0; i-- {
+		if m.requests[i].ID == req.ID {
+			m.requests[i] = req
+			break
 		}
 	}
-
-	m.requests[req.ID] = req
 }
