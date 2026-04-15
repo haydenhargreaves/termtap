@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"termtap.dev/internal/model"
@@ -12,6 +13,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		return m, nil
+
+	case TickMsg:
+		m.now = msg.Now
+		if m.hasPendingRequests() {
+			return m, tickCmd()
+		}
 		return m, nil
 
 	// TODO: Abstract the keymaps
@@ -32,6 +40,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case ErrMsg:
 		m.events = append(m.events, model.Event{
+			Time: time.Now().Local(),
 			Type: model.EventTypeWarn,
 			Body: fmt.Sprintf("tui event stream closed: %v", msg.err),
 		})
@@ -40,6 +49,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case EventMsg:
 		m.pushEvent(msg.value)
 		m.applyMessage(msg.value)
+		if m.hasPendingRequests() {
+			return m, tea.Batch(waitForEvent(m.channel), tickCmd())
+		}
 		return m, waitForEvent(m.channel)
 	}
 
@@ -81,4 +93,15 @@ func (m *Model) updateRequest(req model.Request) {
 			break
 		}
 	}
+}
+
+func (m Model) hasPendingRequests() bool {
+	// Traverse backward to be a bit more efficient, the most recent requests are more
+	// like to be pending.
+	for i := len(m.requests) - 1; i >= 0; i-- {
+		if m.requests[i].Pending {
+			return true
+		}
+	}
+	return false
 }

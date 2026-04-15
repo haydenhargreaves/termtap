@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"termtap.dev/internal/model"
 )
@@ -24,6 +25,7 @@ func NewProcess(cmd model.Command, addr string, ch chan<- model.Event) *model.Pr
 	stdout, err := proc.StdoutPipe()
 	if err != nil {
 		ch <- model.Event{
+			Time: time.Now().Local(),
 			Type: model.EventTypeWarn,
 			Body: fmt.Sprintf("could not open stdout pipe: %q", err),
 			PID:  proc.Process.Pid,
@@ -35,6 +37,7 @@ func NewProcess(cmd model.Command, addr string, ch chan<- model.Event) *model.Pr
 	stderr, err := proc.StderrPipe()
 	if err != nil {
 		ch <- model.Event{
+			Time: time.Now().Local(),
 			Type: model.EventTypeWarn,
 			Body: fmt.Sprintf("could not open stderr pipe: %q", err),
 			PID:  proc.Process.Pid,
@@ -70,6 +73,7 @@ func readPipe(pipe io.Reader, t model.EventType, ch chan<- model.Event) {
 	scanner := bufio.NewScanner(pipe)
 	for scanner.Scan() {
 		ch <- model.Event{
+			Time: time.Now().Local(),
 			Type: t,
 			Body: scanner.Text(),
 		}
@@ -100,6 +104,7 @@ func UpdateStatus(proc *model.Process, running bool, ch chan<- model.Event) {
 	}
 
 	ch <- model.Event{
+		Time: time.Now().Local(),
 		Type: t,
 		Body: fmt.Sprintf("Set process pid '%d' status to %s", proc.Exec.Process.Pid, status),
 		PID:  proc.Exec.Process.Pid,

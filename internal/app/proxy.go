@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"termtap.dev/internal/model"
 )
@@ -14,6 +15,7 @@ func StartProxy(ps *model.ProxyServer, ch chan<- model.Event) {
 	}
 
 	ch <- model.Event{
+		Time: time.Now().Local(),
 		Type: model.EventTypeProxyStarting,
 		Body: fmt.Sprintf("proxy server started on %s", (*ps.Listener).Addr().String()),
 	}
@@ -24,6 +26,7 @@ func StartProxy(ps *model.ProxyServer, ch chan<- model.Event) {
 		}
 
 		ch <- model.Event{
+			Time: time.Now().Local(),
 			Type: model.EventTypeFatal,
 			Body: fmt.Sprintf("fatal error in proxy server: %q", err),
 		}

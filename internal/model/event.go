@@ -1,5 +1,7 @@
 package model
 
+import "time"
+
 type EventType string
 
 const (
@@ -26,6 +28,7 @@ const (
 )
 
 type Event struct {
+	Time     time.Time
 	Type     EventType
 	Body     string
 	PID      int

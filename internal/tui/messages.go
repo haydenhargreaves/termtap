@@ -1,6 +1,11 @@
 package tui
 
-import "termtap.dev/internal/model"
+import (
+	"time"
+
+	tea "github.com/charmbracelet/bubbletea"
+	"termtap.dev/internal/model"
+)
 
 type EventMsg struct {
 	value model.Event
@@ -8,4 +13,16 @@ type EventMsg struct {
 
 type ErrMsg struct {
 	err error
+}
+
+type TickMsg struct {
+	Now time.Time
+}
+
+const tick = 20 * time.Millisecond
+
+func tickCmd() tea.Cmd {
+	return tea.Tick(tick, func(t time.Time) tea.Msg {
+		return TickMsg{Now: t}
+	})
 }

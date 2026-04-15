@@ -35,6 +35,7 @@ func Destroy(ps *model.ProxyServer, ch chan<- model.Event) {
 	if ps != nil && ps.Server != nil {
 		_ = ps.Server.Shutdown(ctx)
 		ch <- model.Event{
+			Time: time.Now().Local(),
 			Type: model.EventTypeProxyStarted,
 			Body: "proxy server was destroyed",
 		}

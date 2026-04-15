@@ -28,6 +28,7 @@ func proxyHandler(ch chan<- model.Event) http.Handler {
 		if req.Method == http.MethodConnect {
 			http.Error(w, "CONNECT is not supported yet", http.StatusNotImplemented)
 			ch <- model.Event{
+				Time: time.Now().Local(),
 				Type: model.EventTypeWarn,
 				Body: fmt.Sprintf("CONNECT is not supported: %s", req.Host),
 			}
@@ -37,6 +38,7 @@ func proxyHandler(ch chan<- model.Event) http.Handler {
 		if req.URL.Scheme == "" || req.URL.Host == "" {
 			http.Error(w, "request must use absolute-form URLs through the proxy", http.StatusBadRequest)
 			ch <- model.Event{
+				Time: time.Now().Local(),
 				Type: model.EventTypeWarn,
 				Body: fmt.Sprintf("rejected non-proxy request %s %s", req.Method, req.URL.String()),
 			}
@@ -61,6 +63,7 @@ func proxyHandler(ch chan<- model.Event) http.Handler {
 		requestPreview, err := readAndRestoreBody(&req.Body)
 		if err != nil {
 			ch <- model.Event{
+				Time:    time.Now().Local(),
 				Type:    model.EventTypeWarn,
 				Body:    fmt.Sprintf("(%s) failed to read request body", request.ID),
 				Request: request,
@@ -81,6 +84,7 @@ func proxyHandler(ch chan<- model.Event) http.Handler {
 		request.RawURL = outReq.URL.String()
 
 		ch <- model.Event{
+			Time:    time.Now().Local(),
 			Type:    model.EventTypeRequestStarted,
 			Body:    fmt.Sprintf("-> %+v", request),
 			Request: request,
@@ -97,6 +101,7 @@ func proxyHandler(ch chan<- model.Event) http.Handler {
 			request.Status = status
 
 			ch <- model.Event{
+				Time:    time.Now().Local(),
 				Type:    model.EventTypeRequestFailed,
 				Body:    fmt.Sprintf("upstream error for %s %s: %v", outReq.Method, outReq.URL.String(), err),
 				Request: request,
@@ -108,6 +113,7 @@ func proxyHandler(ch chan<- model.Event) http.Handler {
 		responsePreview, err := readAndRestoreBody(&resp.Body)
 		if err != nil {
 			ch <- model.Event{
+				Time:    time.Now().Local(),
 				Type:    model.EventTypeWarn,
 				Body:    fmt.Sprintf("(%s) failed to read response body", request.ID),
 				Request: request,
@@ -125,6 +131,7 @@ func proxyHandler(ch chan<- model.Event) http.Handler {
 			request.Status = resp.StatusCode
 
 			ch <- model.Event{
+				Time: time.Now().Local(),
 				Type: model.EventTypeRequestFailed,
 				Body: fmt.Sprintf("write response body %s %s: %v", outReq.Method, outReq.URL.String(), err),
 			}
@@ -137,6 +144,7 @@ func proxyHandler(ch chan<- model.Event) http.Handler {
 		request.Pending = false
 
 		ch <- model.Event{
+			Time:    time.Now().Local(),
 			Type:    model.EventTypeRequestFinished,
 			Body:    fmt.Sprintf("<- %+v %s", request, formatHeaders(resp.Request.Header)),
 			Request: request,

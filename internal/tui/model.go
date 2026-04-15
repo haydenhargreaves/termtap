@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"termtap.dev/internal/model"
@@ -25,6 +26,8 @@ type Model struct {
 	showEvents bool
 	showStd    bool
 	showSearch bool
+
+	now time.Time
 }
 
 func NewModel(ch <-chan model.Event) Model {
@@ -47,7 +50,7 @@ func Run(ch <-chan model.Event) error {
 }
 
 func (m Model) Init() tea.Cmd {
-	return waitForEvent(m.channel)
+	return tea.Batch(waitForEvent(m.channel), tickCmd())
 }
 
 func waitForEvent(ch <-chan model.Event) tea.Cmd {
