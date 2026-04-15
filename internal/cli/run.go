@@ -7,6 +7,7 @@ import (
 
 	"termtap.dev/internal/app"
 	"termtap.dev/internal/model"
+	"termtap.dev/internal/tui"
 )
 
 // This should be configurable at some point, just in case they build on 8080
@@ -19,8 +20,13 @@ func Run(args []string) {
 		return
 	}
 
-	err := app.StartSession(cmd, proxy_addr)
+	session, err := app.StartSession(cmd, proxy_addr)
 	if err != nil {
+		log.Fatalln(err)
+	}
+	defer session.Stop()
+
+	if err := tui.Run(session.Messages); err != nil {
 		log.Fatalln(err)
 	}
 }

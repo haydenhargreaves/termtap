@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"syscall"
+	"time"
 
 	"termtap.dev/internal/model"
 	"termtap.dev/internal/process"
@@ -38,7 +40,15 @@ func StartProcess(cmd model.Command, addr string, ch chan<- model.Message, sigCh
 		}
 
 		if proc.Exec != nil {
-			_ = proc.Exec.Process.Signal(sig)
+			_ = process.SignalProcess(proc.Exec, sig)
+
+			go func() {
+				time.Sleep(1500 * time.Millisecond)
+				if process.ProcessAlive(proc.Exec) {
+					_ = process.SignalProcess(proc.Exec, syscall.SIGKILL)
+				}
+			}()
+
 			process.UpdateStatus(proc, false, ch)
 		}
 	}()

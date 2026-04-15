@@ -17,6 +17,7 @@ func CommandString(c model.Command) string {
 
 func NewProcess(cmd model.Command, addr string, ch chan<- model.Message) *model.Process {
 	proc := exec.Command(cmd.Name, cmd.Args...)
+	configureProcessForSignals(proc)
 
 	injectEnv(proc, addr)
 
