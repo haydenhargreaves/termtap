@@ -9,20 +9,23 @@ import (
 
 // TODO: This is all temporary
 func (m Model) View() string {
-	eventLines := m.renderEvents(8)
-	requestLines := m.renderRequests(12)
+	return m.renderAppPane()
 
-	return strings.Join([]string{
-		"termtap - live session",
-		fmt.Sprintf("events=%d requests=%d", len(m.events), len(m.requests)),
-		"keys: q/esc/ctrl+c quit",
-		"",
-		"Recent events:",
-		eventLines,
-		"",
-		"Recent requests:",
-		requestLines,
-	}, "\n")
+	// eventLines := m.renderEvents(8)
+	// requestLines := m.renderRequests(12)
+	//
+	// return strings.Join([]string{
+	// 	"termtap - live session",
+	// 	fmt.Sprintf("events=%d requests=%d", len(m.events), len(m.requests)),
+	// 	fmt.Sprintf("%dx%d", m.height, m.width),
+	// 	"keys: q/esc/ctrl+c quit",
+	// 	"",
+	// 	"Recent events:",
+	// 	eventLines,
+	// 	"",
+	// 	"Recent requests:",
+	// 	requestLines,
+	// }, "\n")
 }
 
 func (m Model) renderEvents(limit int) string {

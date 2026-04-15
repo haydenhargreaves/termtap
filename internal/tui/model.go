@@ -21,15 +21,22 @@ type Model struct {
 
 	width  int
 	height int
+
+	showEvents bool
+	showStd    bool
+	showSearch bool
 }
 
 func NewModel(ch <-chan model.Event) Model {
 	return Model{
-		channel:  ch,
-		events:   make([]model.Event, 0, maxEvents),
-		requests: make([]model.Request, 0, maxRequests),
-		width:    100,
-		height:   28,
+		channel:    ch,
+		events:     make([]model.Event, 0, maxEvents),
+		requests:   make([]model.Request, 0, maxRequests),
+		width:      0,
+		height:     0,
+		showEvents: false,
+		showStd:    false,
+		showSearch: false,
 	}
 }
 

@@ -14,10 +14,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		return m, nil
 
+	// TODO: Abstract the keymaps
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "ctrl+c", "q", "esc":
+		case "ctrl+c", "q":
 			return m, tea.Quit
+		case "e":
+			m.showEvents = !m.showEvents
+		case "o":
+			m.showStd = !m.showStd
+		case "/":
+			m.showSearch = true
+		case "esc":
+			m.showSearch = false
 		}
 		return m, nil
 
