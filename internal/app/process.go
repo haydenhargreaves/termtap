@@ -3,7 +3,6 @@ package app
 import (
 	"errors"
 	"fmt"
-	"os"
 	"os/exec"
 	"syscall"
 	"time"
@@ -12,7 +11,7 @@ import (
 	"termtap.dev/internal/process"
 )
 
-func StartProcess(cmd model.Command, addr string, ch chan<- model.Message, sigCh <-chan os.Signal) {
+func StartProcess(cmd model.Command, addr string, ch chan<- model.Message) (*model.Process, error) {
 	ch <- model.Message{
 		Type: model.MessageTypeProcessStarting,
 		Body: fmt.Sprintf("spawning process '%s'", process.CommandString(cmd)),
@@ -21,43 +20,46 @@ func StartProcess(cmd model.Command, addr string, ch chan<- model.Message, sigCh
 	proc := process.NewProcess(cmd, addr, ch)
 
 	if err := proc.Exec.Start(); err != nil {
-		ch <- model.Message{
-			Type: model.MessageTypeProcessExited,
-			Body: fmt.Sprintf("%q", err),
-		}
-		return
+		return nil, fmt.Errorf("start process: %w", err)
 	}
 	process.UpdateStatus(proc, true, ch)
 
-	// Listen for SIGTERM from main process
+	go waitForProcessExit(proc, ch)
+
+	return proc, nil
+}
+
+func StopProcess(proc *model.Process, ch chan<- model.Message, sig syscall.Signal) {
+	if proc == nil || proc.Exec == nil || proc.Exec.Process == nil {
+		return
+	}
+
+	ch <- model.Message{
+		Type: model.MessageTypeProcessSignaled,
+		Body: fmt.Sprintf("process with pid '%d' is being killed", proc.Exec.Process.Pid),
+		PID:  proc.Exec.Process.Pid,
+	}
+
+	_ = process.SignalProcess(proc.Exec, sig)
+
 	go func() {
-		sig := <-sigCh
-
-		ch <- model.Message{
-			Type: model.MessageTypeProcessSignaled,
-			Body: fmt.Sprintf("process with pid '%d' is being killed", proc.Exec.Process.Pid),
-			PID:  proc.Exec.Process.Pid,
-		}
-
-		if proc.Exec != nil {
-			_ = process.SignalProcess(proc.Exec, sig)
-
-			go func() {
-				time.Sleep(1500 * time.Millisecond)
-				if process.ProcessAlive(proc.Exec) {
-					_ = process.SignalProcess(proc.Exec, syscall.SIGKILL)
-				}
-			}()
-
-			process.UpdateStatus(proc, false, ch)
+		time.Sleep(1500 * time.Millisecond)
+		if process.ProcessAlive(proc.Exec) {
+			_ = process.SignalProcess(proc.Exec, syscall.SIGKILL)
 		}
 	}()
+}
+
+func waitForProcessExit(proc *model.Process, ch chan<- model.Message) {
+	if proc == nil || proc.Exec == nil {
+		return
+	}
 
 	if err := proc.Exec.Wait(); err != nil {
 		if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 			ch <- model.Message{
 				Type:     model.MessageTypeProcessExited,
-				Body:     fmt.Sprintf("process pid '%d' exited by itself", proc.Exec.Process.Pid),
+				Body:     fmt.Sprintf("process pid '%d' exited", proc.Exec.Process.Pid),
 				PID:      proc.Exec.Process.Pid,
 				ExitCode: exitErr.ExitCode(),
 			}
@@ -73,4 +75,11 @@ func StartProcess(cmd model.Command, addr string, ch chan<- model.Message, sigCh
 		return
 	}
 
+	ch <- model.Message{
+		Type:     model.MessageTypeProcessExited,
+		Body:     fmt.Sprintf("process pid '%d' exited", proc.Exec.Process.Pid),
+		PID:      proc.Exec.Process.Pid,
+		ExitCode: 0,
+	}
+	process.UpdateStatus(proc, false, ch)
 }

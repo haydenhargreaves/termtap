@@ -7,6 +7,7 @@ import (
 	"termtap.dev/internal/model"
 )
 
+// TODO: This is all temporary
 func (m Model) View() string {
 	eventLines := m.renderEvents(8)
 	requestLines := m.renderRequests(12)
@@ -29,10 +30,7 @@ func (m Model) renderEvents(limit int) string {
 		return "  (none yet)"
 	}
 
-	start := len(m.events) - limit
-	if start < 0 {
-		start = 0
-	}
+	start := max(len(m.events)-limit, 0)
 
 	rows := make([]string, 0, len(m.events)-start)
 	for i := start; i < len(m.events); i++ {

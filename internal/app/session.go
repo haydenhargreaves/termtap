@@ -1,32 +1,43 @@
 package app
 
 import (
-	"os"
-	"os/signal"
 	"sync"
 	"syscall"
 
 	"termtap.dev/internal/model"
+	"termtap.dev/internal/proxy"
 )
 
 type Session struct {
 	Messages <-chan model.Message
 
-	sigCh    chan os.Signal
+	msgCh    chan model.Message
+	proxy    *model.ProxyServer
+	proc     *model.Process
 	stopOnce sync.Once
 }
 
 func StartSession(cmd model.Command, addr string) (*Session, error) {
 	msgs := make(chan model.Message, 256)
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 
-	go StartProxy(addr, msgs)
-	go StartProcess(cmd, addr, msgs, sigCh)
+	ps, err := proxy.NewProxyServer(addr, msgs)
+	if err != nil {
+		return nil, err
+	}
+
+	go StartProxy(ps, msgs)
+
+	proc, err := StartProcess(cmd, addr, msgs)
+	if err != nil {
+		proxy.Destory(ps, msgs)
+		return nil, err
+	}
 
 	return &Session{
 		Messages: msgs,
-		sigCh:    sigCh,
+		msgCh:    msgs,
+		proxy:    ps,
+		proc:     proc,
 	}, nil
 }
 
@@ -36,11 +47,7 @@ func (s *Session) Stop() {
 	}
 
 	s.stopOnce.Do(func() {
-		signal.Stop(s.sigCh)
-
-		select {
-		case s.sigCh <- syscall.SIGTERM:
-		default:
-		}
+		StopProcess(s.proc, s.msgCh, syscall.SIGTERM)
+		proxy.Destory(s.proxy, s.msgCh)
 	})
 }

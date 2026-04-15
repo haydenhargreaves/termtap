@@ -1,32 +1,31 @@
 package app
 
 import (
+	"errors"
 	"fmt"
+	"net/http"
 
 	"termtap.dev/internal/model"
-	"termtap.dev/internal/proxy"
 )
 
-func StartProxy(addr string, ch chan<- model.Message) {
-	ps, err := proxy.NewProxyServer(addr, ch)
-	if err != nil {
-		ch <- model.Message{
-			Type: model.MessageTypeFatal,
-			Body: fmt.Sprintf("%q", err),
-		}
+func StartProxy(ps *model.ProxyServer, ch chan<- model.Message) {
+	if ps == nil || ps.Server == nil || ps.Listener == nil {
 		return
 	}
-	defer proxy.Destory(ps, ch)
 
 	ch <- model.Message{
 		Type: model.MessageTypeProxyStarting,
-		Body: fmt.Sprintf("proxy server started on %s", addr),
+		Body: fmt.Sprintf("proxy server started on %s", (*ps.Listener).Addr().String()),
 	}
 
 	if err := ps.Server.Serve(*ps.Listener); err != nil {
+		if errors.Is(err, http.ErrServerClosed) {
+			return
+		}
+
 		ch <- model.Message{
 			Type: model.MessageTypeFatal,
-			Body: fmt.Sprintf("%q", err),
+			Body: fmt.Sprintf("fatal error in proxy server: %q", err),
 		}
 		return
 	}
