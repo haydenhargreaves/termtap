@@ -29,7 +29,7 @@ func StartSession(cmd model.Command, addr string) (*Session, error) {
 
 	proc, err := StartProcess(cmd, addr, msgs)
 	if err != nil {
-		proxy.Destory(ps, msgs)
+		proxy.Destroy(ps, msgs)
 		return nil, err
 	}
 
@@ -48,6 +48,6 @@ func (s *Session) Stop() {
 
 	s.stopOnce.Do(func() {
 		StopProcess(s.proc, s.msgCh, syscall.SIGTERM)
-		proxy.Destory(s.proxy, s.msgCh)
+		proxy.Destroy(s.proxy, s.msgCh)
 	})
 }
