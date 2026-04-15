@@ -111,9 +111,10 @@ func (m Model) renderEventsPane(w, h int) []string {
 		events = events[len(events)-displayCount:]
 	}
 
-	lines := []string{
-		fmt.Sprintf("EVENT LOG - %d EVENTS", len(events)),
-	}
+	left := fmt.Sprintf("EVENT LOG - %d EVENTS", len(events))
+	right := "E: TOGGLE"
+	status := left + strings.Repeat(" ", w-len(left+right)) + right
+	lines := []string{status}
 
 	for _, event := range events {
 		line := fmt.Sprintf(
@@ -161,9 +162,10 @@ func (m Model) renderStdPane(w, h int) []string {
 		logs = logs[len(logs)-displayCount:]
 	}
 
-	lines := []string{
-		fmt.Sprintf("STDOUT/STDERR LOG - %d LINES", len(logs)),
-	}
+	left := fmt.Sprintf("STDOUT/STDERR LOG - %d LINES", len(logs))
+	right := "O: TOGGLE"
+	status := left + strings.Repeat(" ", w-len(left+right)) + right
+	lines := []string{status}
 
 	for _, log := range logs {
 		var t string
