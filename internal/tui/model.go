@@ -13,18 +13,18 @@ const (
 	maxRequests = 200
 )
 
-type appMsg struct {
-	value model.Message
+type EventMsg struct {
+	value model.Event
 }
 
-type modelErrMsg struct {
+type ErrMsg struct {
 	err error
 }
 
 type Model struct {
-	msgCh <-chan model.Message
+	msgCh <-chan model.Event
 
-	events       []model.Message
+	events       []model.Event
 	requestOrder []uuid.UUID
 	requests     map[uuid.UUID]model.Request
 
@@ -32,10 +32,10 @@ type Model struct {
 	height int
 }
 
-func NewModel(msgCh <-chan model.Message) Model {
+func NewModel(msgCh <-chan model.Event) Model {
 	return Model{
 		msgCh:        msgCh,
-		events:       make([]model.Message, 0, maxEvents),
+		events:       make([]model.Event, 0, maxEvents),
 		requestOrder: make([]uuid.UUID, 0, maxRequests),
 		requests:     map[uuid.UUID]model.Request{},
 		width:        100,
@@ -43,7 +43,7 @@ func NewModel(msgCh <-chan model.Message) Model {
 	}
 }
 
-func Run(msgCh <-chan model.Message) error {
+func Run(msgCh <-chan model.Event) error {
 	p := tea.NewProgram(NewModel(msgCh), tea.WithAltScreen())
 	_, err := p.Run()
 	return err
@@ -53,13 +53,13 @@ func (m Model) Init() tea.Cmd {
 	return waitForAppMessage(m.msgCh)
 }
 
-func waitForAppMessage(msgCh <-chan model.Message) tea.Cmd {
+func waitForAppMessage(msgCh <-chan model.Event) tea.Cmd {
 	return func() tea.Msg {
 		msg, ok := <-msgCh
 		if !ok {
-			return modelErrMsg{err: fmt.Errorf("event channel closed")}
+			return ErrMsg{err: fmt.Errorf("event channel closed")}
 		}
 
-		return appMsg{value: msg}
+		return EventMsg{value: msg}
 	}
 }

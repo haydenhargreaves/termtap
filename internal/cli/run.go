@@ -26,7 +26,7 @@ func Run(args []string) {
 	}
 	defer session.Stop()
 
-	if err := tui.Run(session.Messages); err != nil {
+	if err := tui.Run(session.Events); err != nil {
 		log.Fatalln(err)
 	}
 }

@@ -9,16 +9,16 @@ import (
 )
 
 type Session struct {
-	Messages <-chan model.Message
+	Events <-chan model.Event
 
-	msgCh    chan model.Message
-	proxy    *model.ProxyServer
-	proc     *model.Process
-	stopOnce sync.Once
+	ch    chan model.Event
+	proxy *model.ProxyServer
+	proc  *model.Process
+	once  sync.Once
 }
 
 func StartSession(cmd model.Command, addr string) (*Session, error) {
-	msgs := make(chan model.Message, 256)
+	msgs := make(chan model.Event, 256)
 
 	ps, err := proxy.NewProxyServer(addr, msgs)
 	if err != nil {
@@ -34,10 +34,10 @@ func StartSession(cmd model.Command, addr string) (*Session, error) {
 	}
 
 	return &Session{
-		Messages: msgs,
-		msgCh:    msgs,
-		proxy:    ps,
-		proc:     proc,
+		Events: msgs,
+		ch:     msgs,
+		proxy:  ps,
+		proc:   proc,
 	}, nil
 }
 
@@ -46,8 +46,8 @@ func (s *Session) Stop() {
 		return
 	}
 
-	s.stopOnce.Do(func() {
-		StopProcess(s.proc, s.msgCh, syscall.SIGTERM)
-		proxy.Destroy(s.proxy, s.msgCh)
+	s.once.Do(func() {
+		StopProcess(s.proc, s.ch, syscall.SIGTERM)
+		proxy.Destroy(s.proxy, s.ch)
 	})
 }

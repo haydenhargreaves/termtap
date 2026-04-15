@@ -22,14 +22,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	case modelErrMsg:
-		m.events = append(m.events, model.Message{
-			Type: model.MessageTypeWarn,
+	case ErrMsg:
+		m.events = append(m.events, model.Event{
+			Type: model.EventTypeWarn,
 			Body: fmt.Sprintf("tui event stream closed: %v", msg.err),
 		})
 		return m, nil
 
-	case appMsg:
+	case EventMsg:
 		m.pushEvent(msg.value)
 		m.applyMessage(msg.value)
 		return m, waitForAppMessage(m.msgCh)
@@ -38,18 +38,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *Model) pushEvent(msg model.Message) {
+func (m *Model) pushEvent(msg model.Event) {
 	m.events = append(m.events, msg)
 	if len(m.events) > maxEvents {
 		m.events = m.events[len(m.events)-maxEvents:]
 	}
 }
 
-func (m *Model) applyMessage(msg model.Message) {
+func (m *Model) applyMessage(msg model.Event) {
 	switch msg.Type {
-	case model.MessageTypeRequestStarted:
+	case model.EventTypeRequestStarted:
 		m.upsertRequest(msg.Request, true)
-	case model.MessageTypeRequestFinished, model.MessageTypeRequestFailed:
+	case model.EventTypeRequestFinished, model.EventTypeRequestFailed:
 		m.upsertRequest(msg.Request, false)
 	}
 }

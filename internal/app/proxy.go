@@ -8,13 +8,13 @@ import (
 	"termtap.dev/internal/model"
 )
 
-func StartProxy(ps *model.ProxyServer, ch chan<- model.Message) {
+func StartProxy(ps *model.ProxyServer, ch chan<- model.Event) {
 	if ps == nil || ps.Server == nil || ps.Listener == nil {
 		return
 	}
 
-	ch <- model.Message{
-		Type: model.MessageTypeProxyStarting,
+	ch <- model.Event{
+		Type: model.EventTypeProxyStarting,
 		Body: fmt.Sprintf("proxy server started on %s", (*ps.Listener).Addr().String()),
 	}
 
@@ -23,8 +23,8 @@ func StartProxy(ps *model.ProxyServer, ch chan<- model.Message) {
 			return
 		}
 
-		ch <- model.Message{
-			Type: model.MessageTypeFatal,
+		ch <- model.Event{
+			Type: model.EventTypeFatal,
 			Body: fmt.Sprintf("fatal error in proxy server: %q", err),
 		}
 		return

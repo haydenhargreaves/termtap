@@ -10,7 +10,7 @@ import (
 	"termtap.dev/internal/model"
 )
 
-func NewProxyServer(addr string, ch chan<- model.Message) (*model.ProxyServer, error) {
+func NewProxyServer(addr string, ch chan<- model.Event) (*model.ProxyServer, error) {
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, err
@@ -28,14 +28,14 @@ func NewProxyServer(addr string, ch chan<- model.Message) (*model.ProxyServer, e
 }
 
 // BUG: Not sure what all this does
-func Destroy(ps *model.ProxyServer, ch chan<- model.Message) {
+func Destroy(ps *model.ProxyServer, ch chan<- model.Event) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
 	if ps != nil && ps.Server != nil {
 		_ = ps.Server.Shutdown(ctx)
-		ch <- model.Message{
-			Type: model.MessageTypeProxyStopped,
+		ch <- model.Event{
+			Type: model.EventTypeProxyStarted,
 			Body: "proxy server was destroyed",
 		}
 	}

@@ -15,7 +15,7 @@ func CommandString(c model.Command) string {
 	return fmt.Sprintf("%s %s", c.Name, strings.Join(c.Args, " "))
 }
 
-func NewProcess(cmd model.Command, addr string, ch chan<- model.Message) *model.Process {
+func NewProcess(cmd model.Command, addr string, ch chan<- model.Event) *model.Process {
 	proc := exec.Command(cmd.Name, cmd.Args...)
 	configureProcessForSignals(proc)
 
@@ -23,24 +23,24 @@ func NewProcess(cmd model.Command, addr string, ch chan<- model.Message) *model.
 
 	stdout, err := proc.StdoutPipe()
 	if err != nil {
-		ch <- model.Message{
-			Type: model.MessageTypeWarn,
+		ch <- model.Event{
+			Type: model.EventTypeWarn,
 			Body: fmt.Sprintf("could not open stdout pipe: %q", err),
 			PID:  proc.Process.Pid,
 		}
 	} else {
-		go readPipe(stdout, model.MessageTypeProcessStdout, ch)
+		go readPipe(stdout, model.EventTypeProcessStdout, ch)
 	}
 
 	stderr, err := proc.StderrPipe()
 	if err != nil {
-		ch <- model.Message{
-			Type: model.MessageTypeWarn,
+		ch <- model.Event{
+			Type: model.EventTypeWarn,
 			Body: fmt.Sprintf("could not open stderr pipe: %q", err),
 			PID:  proc.Process.Pid,
 		}
 	} else {
-		go readPipe(stderr, model.MessageTypeProcessStderr, ch)
+		go readPipe(stderr, model.EventTypeProcessStderr, ch)
 	}
 
 	return &model.Process{
@@ -66,17 +66,17 @@ func injectEnv(proc *exec.Cmd, addr string) {
 	proc.Env = append(os.Environ(), injected...)
 }
 
-func readPipe(pipe io.Reader, t model.MessageType, ch chan<- model.Message) {
+func readPipe(pipe io.Reader, t model.EventType, ch chan<- model.Event) {
 	scanner := bufio.NewScanner(pipe)
 	for scanner.Scan() {
-		ch <- model.Message{
+		ch <- model.Event{
 			Type: t,
 			Body: scanner.Text(),
 		}
 	}
 }
 
-func UpdateStatus(proc *model.Process, running bool, ch chan<- model.Message) {
+func UpdateStatus(proc *model.Process, running bool, ch chan<- model.Event) {
 	if proc == nil {
 		return
 	}
@@ -88,18 +88,18 @@ func UpdateStatus(proc *model.Process, running bool, ch chan<- model.Message) {
 	proc.Running = running
 
 	var (
-		t      model.MessageType
+		t      model.EventType
 		status string
 	)
 	if running {
-		t = model.MessageTypeProcessStarted
+		t = model.EventTypeProcessStarted
 		status = "running"
 	} else {
-		t = model.MessageTypeProcessExited
+		t = model.EventTypeProcessExited
 		status = "stopped"
 	}
 
-	ch <- model.Message{
+	ch <- model.Event{
 		Type: t,
 		Body: fmt.Sprintf("Set process pid '%d' status to %s", proc.Exec.Process.Pid, status),
 		PID:  proc.Exec.Process.Pid,

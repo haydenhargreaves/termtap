@@ -1,32 +1,32 @@
 package model
 
-type MessageType string
+type EventType string
 
 const (
-	MessageTypeSessionStarted MessageType = "SessionStarted"
-	MessageTypeSessionStopped MessageType = "SessionStopped"
+	EventTypeSessionStarted EventType = "SessionStarted"
+	EventTypeSessionStopped EventType = "SessionStopped"
 
-	MessageTypeProxyStarting MessageType = "ProxyStarting"
-	MessageTypeProxyStarted  MessageType = "ProxyStarted"
-	MessageTypeProxyStopped  MessageType = "ProxyStopped"
+	EventTypeProxyStarting EventType = "ProxyStarting"
+	EventTypeProxyStarted  EventType = "ProxyStarted"
+	EventTypeProxyStopped  EventType = "ProxyStopped"
 
-	MessageTypeRequestStarted  MessageType = "RequestStarted"
-	MessageTypeRequestFinished MessageType = "RequestFinished"
-	MessageTypeRequestFailed   MessageType = "RequestFailed"
+	EventTypeRequestStarted  EventType = "RequestStarted"
+	EventTypeRequestFinished EventType = "RequestFinished"
+	EventTypeRequestFailed   EventType = "RequestFailed"
 
-	MessageTypeProcessStarting MessageType = "ProcessStarting"
-	MessageTypeProcessStarted  MessageType = "ProcessStarted"
-	MessageTypeProcessExited   MessageType = "ProcessExited"
-	MessageTypeProcessSignaled MessageType = "ProcessSignaled"
-	MessageTypeProcessStdout   MessageType = "ProcessStdout"
-	MessageTypeProcessStderr   MessageType = "ProcessStderr"
+	EventTypeProcessStarting EventType = "ProcessStarting"
+	EventTypeProcessStarted  EventType = "ProcessStarted"
+	EventTypeProcessExited   EventType = "ProcessExited"
+	EventTypeProcessSignaled EventType = "ProcessSignaled"
+	EventTypeProcessStdout   EventType = "ProcessStdout"
+	EventTypeProcessStderr   EventType = "ProcessStderr"
 
-	MessageTypeFatal MessageType = "Fatal"
-	MessageTypeWarn  MessageType = "Warn"
+	EventTypeFatal EventType = "Fatal"
+	EventTypeWarn  EventType = "Warn"
 )
 
-type Message struct {
-	Type     MessageType
+type Event struct {
+	Type     EventType
 	Body     string
 	PID      int
 	ExitCode int

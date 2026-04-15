@@ -20,15 +20,15 @@ import (
 
 const maxPreviewBytes = 1024
 
-func proxyHandler(ch chan<- model.Message) http.Handler {
+func proxyHandler(ch chan<- model.Event) http.Handler {
 	transport := http.DefaultTransport
 
 	// TODO: This should be wired into the main channel, but that will require a model package
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		if req.Method == http.MethodConnect {
 			http.Error(w, "CONNECT is not supported yet", http.StatusNotImplemented)
-			ch <- model.Message{
-				Type: model.MessageTypeWarn,
+			ch <- model.Event{
+				Type: model.EventTypeWarn,
 				Body: fmt.Sprintf("CONNECT is not supported: %s", req.Host),
 			}
 			return
@@ -36,8 +36,8 @@ func proxyHandler(ch chan<- model.Message) http.Handler {
 
 		if req.URL.Scheme == "" || req.URL.Host == "" {
 			http.Error(w, "request must use absolute-form URLs through the proxy", http.StatusBadRequest)
-			ch <- model.Message{
-				Type: model.MessageTypeWarn,
+			ch <- model.Event{
+				Type: model.EventTypeWarn,
 				Body: fmt.Sprintf("rejected non-proxy request %s %s", req.Method, req.URL.String()),
 			}
 			return
@@ -60,8 +60,8 @@ func proxyHandler(ch chan<- model.Message) http.Handler {
 
 		requestPreview, err := readAndRestoreBody(&req.Body)
 		if err != nil {
-			ch <- model.Message{
-				Type:    model.MessageTypeWarn,
+			ch <- model.Event{
+				Type:    model.EventTypeWarn,
 				Body:    fmt.Sprintf("(%s) failed to read request body", request.ID),
 				Request: request,
 			}
@@ -80,8 +80,8 @@ func proxyHandler(ch chan<- model.Message) http.Handler {
 		request.RequestHeaders = outReq.Header
 		request.RawURL = outReq.URL.String()
 
-		ch <- model.Message{
-			Type:    model.MessageTypeRequestStarted,
+		ch <- model.Event{
+			Type:    model.EventTypeRequestStarted,
 			Body:    fmt.Sprintf("-> %+v", request),
 			Request: request,
 		}
@@ -96,8 +96,8 @@ func proxyHandler(ch chan<- model.Message) http.Handler {
 			request.Duration = time.Since(start).Round(time.Microsecond)
 			request.Status = status
 
-			ch <- model.Message{
-				Type:    model.MessageTypeRequestFailed,
+			ch <- model.Event{
+				Type:    model.EventTypeRequestFailed,
 				Body:    fmt.Sprintf("upstream error for %s %s: %v", outReq.Method, outReq.URL.String(), err),
 				Request: request,
 			}
@@ -107,8 +107,8 @@ func proxyHandler(ch chan<- model.Message) http.Handler {
 
 		responsePreview, err := readAndRestoreBody(&resp.Body)
 		if err != nil {
-			ch <- model.Message{
-				Type:    model.MessageTypeWarn,
+			ch <- model.Event{
+				Type:    model.EventTypeWarn,
 				Body:    fmt.Sprintf("(%s) failed to read response body", request.ID),
 				Request: request,
 			}
@@ -124,8 +124,8 @@ func proxyHandler(ch chan<- model.Message) http.Handler {
 			request.Duration = time.Since(start).Round(time.Microsecond)
 			request.Status = resp.StatusCode
 
-			ch <- model.Message{
-				Type: model.MessageTypeRequestFailed,
+			ch <- model.Event{
+				Type: model.EventTypeRequestFailed,
 				Body: fmt.Sprintf("write response body %s %s: %v", outReq.Method, outReq.URL.String(), err),
 			}
 			return
@@ -136,8 +136,8 @@ func proxyHandler(ch chan<- model.Message) http.Handler {
 		request.ResponseHeaders = resp.Header
 		request.Pending = false
 
-		ch <- model.Message{
-			Type:    model.MessageTypeRequestFinished,
+		ch <- model.Event{
+			Type:    model.EventTypeRequestFinished,
 			Body:    fmt.Sprintf("<- %+v %s", request, formatHeaders(resp.Request.Header)),
 			Request: request,
 		}

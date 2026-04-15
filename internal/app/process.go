@@ -11,9 +11,9 @@ import (
 	"termtap.dev/internal/process"
 )
 
-func StartProcess(cmd model.Command, addr string, ch chan<- model.Message) (*model.Process, error) {
-	ch <- model.Message{
-		Type: model.MessageTypeProcessStarting,
+func StartProcess(cmd model.Command, addr string, ch chan<- model.Event) (*model.Process, error) {
+	ch <- model.Event{
+		Type: model.EventTypeProcessStarting,
 		Body: fmt.Sprintf("spawning process '%s'", process.CommandString(cmd)),
 	}
 
@@ -29,13 +29,13 @@ func StartProcess(cmd model.Command, addr string, ch chan<- model.Message) (*mod
 	return proc, nil
 }
 
-func StopProcess(proc *model.Process, ch chan<- model.Message, sig syscall.Signal) {
+func StopProcess(proc *model.Process, ch chan<- model.Event, sig syscall.Signal) {
 	if proc == nil || proc.Exec == nil || proc.Exec.Process == nil {
 		return
 	}
 
-	ch <- model.Message{
-		Type: model.MessageTypeProcessSignaled,
+	ch <- model.Event{
+		Type: model.EventTypeProcessSignaled,
 		Body: fmt.Sprintf("process with pid '%d' is being killed", proc.Exec.Process.Pid),
 		PID:  proc.Exec.Process.Pid,
 	}
@@ -50,15 +50,15 @@ func StopProcess(proc *model.Process, ch chan<- model.Message, sig syscall.Signa
 	}()
 }
 
-func waitForProcessExit(proc *model.Process, ch chan<- model.Message) {
+func waitForProcessExit(proc *model.Process, ch chan<- model.Event) {
 	if proc == nil || proc.Exec == nil {
 		return
 	}
 
 	if err := proc.Exec.Wait(); err != nil {
 		if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
-			ch <- model.Message{
-				Type:     model.MessageTypeProcessExited,
+			ch <- model.Event{
+				Type:     model.EventTypeProcessExited,
 				Body:     fmt.Sprintf("process pid '%d' exited", proc.Exec.Process.Pid),
 				PID:      proc.Exec.Process.Pid,
 				ExitCode: exitErr.ExitCode(),
@@ -67,16 +67,16 @@ func waitForProcessExit(proc *model.Process, ch chan<- model.Message) {
 			return
 		}
 
-		ch <- model.Message{
-			Type: model.MessageTypeFatal,
+		ch <- model.Event{
+			Type: model.EventTypeFatal,
 			Body: fmt.Sprintf("%q", err),
 		}
 		process.UpdateStatus(proc, false, ch)
 		return
 	}
 
-	ch <- model.Message{
-		Type:     model.MessageTypeProcessExited,
+	ch <- model.Event{
+		Type:     model.EventTypeProcessExited,
 		Body:     fmt.Sprintf("process pid '%d' exited", proc.Exec.Process.Pid),
 		PID:      proc.Exec.Process.Pid,
 		ExitCode: 0,
