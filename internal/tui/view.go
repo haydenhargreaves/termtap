@@ -5,9 +5,16 @@ import (
 	"time"
 )
 
-// TODO: This is all temporary
 func (m Model) View() string {
-	return m.renderAppPane()
+	view := m.renderAppPane()
+	if m.width <= 0 || m.height <= 0 {
+		return view
+	}
+
+	return m.theme.Background.
+		Width(m.width).
+		Height(m.height).
+		Render(view)
 }
 
 func formatDuration(d time.Duration) string {

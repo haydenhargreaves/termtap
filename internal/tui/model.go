@@ -23,6 +23,7 @@ type Model struct {
 	width  int
 	height int
 
+	theme      Theme
 	showEvents bool
 	showStd    bool
 	showSearch bool
@@ -40,6 +41,7 @@ func NewModel(ch <-chan model.Event) Model {
 		showEvents: false,
 		showStd:    false,
 		showSearch: false,
+		theme:      newTheme(),
 	}
 }
 

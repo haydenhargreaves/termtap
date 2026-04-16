@@ -11,13 +11,13 @@ func (m Model) renderAppPane() string {
 		searchH int = 1
 
 		reqW int = max(0, int(float64(m.width)*0.55))
-		reqH int = max(0, m.height-constHeightOffset)
+		detW int = max(0, m.width-reqW)
 
-		detW int = max(0, int(float64(m.width)*0.45))
+		reqH int = max(0, m.height-constHeightOffset)
 		detH int = max(0, m.height-constHeightOffset)
 
 		eventW int = max(0, m.width)
-		eventH int = max(0, int(float64(m.height)*0.15))
+		eventH int = max(0, int(float64(m.height)*0.2))
 
 		stdW int = max(0, m.width)
 		stdH int = max(0, int(float64(m.height)*0.2))

@@ -5,24 +5,30 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
 	"termtap.dev/internal/model"
 )
 
+// TODO: LOTS OF THIS SUCKS BUT IT WORKS
+
 func (m Model) renderStatusBar(w int) string {
 	var errCount int
+	var msSum int64
 	for _, req := range m.requests {
 		if req.Failed || (req.Status >= 400 && req.Status < 600) {
 			errCount++
 		}
+		msSum += req.Duration.Milliseconds()
 	}
 
-	left := fmt.Sprintf(" tap %3d reqs  |  %d err  | avg 500ms", len(m.requests), errCount)
+	avg := int(msSum) / max(1, len(m.requests))
+	left := fmt.Sprintf(" tap %3d reqs  |  %d err  | avg %dms", len(m.requests), errCount, avg)
 	right := "j/k nav  / search  tab panel  e events  o output  r replay  q quit "
 
 	spaceSize := max(w-(len(left)+len(right)), 0)
 	space := strings.Repeat(" ", spaceSize)
 
-	return left + space + right
+	return m.theme.Header.Render(left + space + right)
 }
 
 func (m Model) renderSearchPane(w, h int) []string {
@@ -88,7 +94,7 @@ func (m Model) renderRequestPane(w, h int) []string {
 func (m Model) renderDetailsPane(w, h int) []string {
 	lines := make([]string, h)
 	for y := range lines {
-		lines[y] = strings.Repeat("^", w)
+		lines[y] = m.theme.Text.Render(strings.Repeat(" ", w))
 	}
 	return lines
 }
@@ -113,7 +119,7 @@ func (m Model) renderEventsPane(w, h int) []string {
 
 	left := fmt.Sprintf("EVENT LOG - %d EVENTS", len(events))
 	right := "E: TOGGLE"
-	status := left + strings.Repeat(" ", w-len(left+right)) + right
+	status := m.theme.EventHeader.Render(left + strings.Repeat(" ", w-len(left+right)) + right)
 	lines := []string{status}
 
 	for _, event := range events {
@@ -164,24 +170,36 @@ func (m Model) renderStdPane(w, h int) []string {
 
 	left := fmt.Sprintf("STDOUT/STDERR LOG - %d LINES", len(logs))
 	right := "O: TOGGLE"
-	status := left + strings.Repeat(" ", w-len(left+right)) + right
+	status := m.theme.StdHeader.Render(left + strings.Repeat(" ", w-len(left+right)) + right)
 	lines := []string{status}
 
 	for _, log := range logs {
-		var t string
+		var (
+			tag      string
+			body     string
+			timePart string
+		)
 		if log.Type == model.EventTypeProcessStderr {
-			t = "STDERR"
+			tag = m.theme.TextError.Render("ERR ")
+			timePart = m.theme.TextMutedError.Render(log.Time.Format("15:04:05") + " ")
+
+			prefix := timePart + tag
+			avail := max(0, w-lipgloss.Width(prefix))
+			body = clampRendered(m.theme.TextError.Render(log.Body), avail)
+
+			pad := max(0, avail-lipgloss.Width(body))
+			body += m.theme.TextMutedError.Render(strings.Repeat(" ", pad))
 		}
 		if log.Type == model.EventTypeProcessStdout {
-			t = "STDOUT"
+			tag = m.theme.TextMuted.Render("OUT ")
+			timePart = m.theme.TextMuted.Render(log.Time.Format("15:04:05") + " ")
+
+			prefix := timePart + tag
+			avail := max(0, w-lipgloss.Width(prefix))
+			body = clampRendered(m.theme.Text.Render(log.Body), avail)
 		}
-		line := fmt.Sprintf(
-			"%s %6s %s",
-			log.Time.Format("15:04:05"),
-			t,
-			log.Body,
-		)
-		lines = append(lines, truncate(line, w))
+		line := clampRendered(timePart+tag+body, w)
+		lines = append(lines, line)
 	}
 
 	// Cleanup

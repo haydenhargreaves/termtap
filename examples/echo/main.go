@@ -8,10 +8,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -21,7 +21,8 @@ import (
 func main() {
 	upstreamHost, err := findNonLoopbackIPv4()
 	if err != nil {
-		log.Fatal(err)
+		fmt.Printf("error: %v\n", err)
+		os.Exit(1)
 	}
 
 	var wg sync.WaitGroup
@@ -30,14 +31,16 @@ func main() {
 	go func() {
 		defer wg.Done()
 		if err := startUpstream(upstreamHost); err != nil {
-			log.Fatal(err)
+			fmt.Printf("error: %v\n", err)
+			os.Exit(1)
 		}
 	}()
 
 	go func() {
 		defer wg.Done()
 		if err := startFrontend(upstreamHost); err != nil {
-			log.Fatal(err)
+			fmt.Printf("error: %v\n", err)
+			os.Exit(1)
 		}
 	}()
 
@@ -58,6 +61,16 @@ func startFrontend(upstreamHost string) error {
 
 	mux.HandleFunc("/echo", func(w http.ResponseWriter, req *http.Request) {
 		client := &http.Client{Timeout: parseTimeout(req.URL.Query().Get("timeoutMs"))}
+		codeParam := strings.TrimSpace(req.URL.Query().Get("code"))
+		failParam := strings.TrimSpace(req.URL.Query().Get("fail"))
+
+		if failParam != "" && failParam != "false" && failParam != "0" && failParam != "no" {
+			fmt.Fprintf(os.Stderr, "frontend fail mode requested method=%s fail=%s\n", req.Method, failParam)
+		}
+
+		if parsedCode := parseStatusCode(codeParam); parsedCode >= 400 {
+			fmt.Fprintf(os.Stderr, "frontend error status requested method=%s code=%d fail=%s\n", req.Method, parsedCode, failParam)
+		}
 
 		switch req.Method {
 		case http.MethodGet:
@@ -66,17 +79,23 @@ func startFrontend(upstreamHost string) error {
 				"http://%s:3001/echo?message=%s&code=%s&fail=%s&sleepMs=%s",
 				upstreamHost,
 				url.QueryEscape(message),
-				url.QueryEscape(req.URL.Query().Get("code")),
-				url.QueryEscape(req.URL.Query().Get("fail")),
+				url.QueryEscape(codeParam),
+				url.QueryEscape(failParam),
 				url.QueryEscape(req.URL.Query().Get("sleepMs")),
 			)
+			fmt.Printf("frontend -> upstream GET %s\n", upstreamURL)
 
 			resp, err := client.Get(upstreamURL)
 			if err != nil {
+				fmt.Fprintf(os.Stderr, "frontend upstream GET failed url=%s err=%v\n", upstreamURL, err)
 				http.Error(w, err.Error(), http.StatusBadGateway)
 				return
 			}
 			defer resp.Body.Close()
+
+			if resp.StatusCode >= 400 {
+				fmt.Fprintf(os.Stderr, "frontend upstream responded with error method=GET status=%d url=%s\n", resp.StatusCode, upstreamURL)
+			}
 
 			body, err := io.ReadAll(resp.Body)
 			if err != nil {
@@ -102,10 +121,11 @@ func startFrontend(upstreamHost string) error {
 			upstreamURL := fmt.Sprintf(
 				"http://%s:3001/echo?code=%s&fail=%s&sleepMs=%s",
 				upstreamHost,
-				url.QueryEscape(req.URL.Query().Get("code")),
-				url.QueryEscape(req.URL.Query().Get("fail")),
+				url.QueryEscape(codeParam),
+				url.QueryEscape(failParam),
 				url.QueryEscape(req.URL.Query().Get("sleepMs")),
 			)
+			fmt.Printf("frontend -> upstream POST %s\n", upstreamURL)
 
 			upstreamReq, err := http.NewRequest(http.MethodPost, upstreamURL, bytes.NewReader(body))
 			if err != nil {
@@ -116,10 +136,15 @@ func startFrontend(upstreamHost string) error {
 
 			resp, err := client.Do(upstreamReq)
 			if err != nil {
+				fmt.Fprintf(os.Stderr, "frontend upstream POST failed url=%s err=%v\n", upstreamURL, err)
 				http.Error(w, err.Error(), http.StatusBadGateway)
 				return
 			}
 			defer resp.Body.Close()
+
+			if resp.StatusCode >= 400 {
+				fmt.Fprintf(os.Stderr, "frontend upstream responded with error method=POST status=%d url=%s\n", resp.StatusCode, upstreamURL)
+			}
 
 			upstreamBody, err := io.ReadAll(resp.Body)
 			if err != nil {
@@ -135,12 +160,12 @@ func startFrontend(upstreamHost string) error {
 		}
 	})
 
-	log.Printf("frontend UI on http://127.0.0.1:3000")
-	log.Printf("frontend GET example:  http://127.0.0.1:3000/echo?message=hello&code=201&sleepMs=200")
-	log.Printf("frontend POST example: curl -i -X POST 'http://127.0.0.1:3000/echo?code=202&sleepMs=200' -H 'content-type: application/json' -d '{\"message\":\"hello\"}'")
-	log.Printf("frontend timeout example: http://127.0.0.1:3000/echo?message=late&sleepMs=4000&timeoutMs=1000")
-	log.Printf("frontend failure examples: fail=true, fail=drop, fail=timeout, fail=status")
-	log.Printf("frontend calls upstream at http://%s:3001/echo", upstreamHost)
+	fmt.Println("frontend UI on http://127.0.0.1:3000")
+	fmt.Println("frontend GET example:  http://127.0.0.1:3000/echo?message=hello&code=201&sleepMs=200")
+	fmt.Println("frontend POST example: curl -i -X POST 'http://127.0.0.1:3000/echo?code=202&sleepMs=200' -H 'content-type: application/json' -d '{\"message\":\"hello\"}'")
+	fmt.Println("frontend timeout example: http://127.0.0.1:3000/echo?message=late&sleepMs=4000&timeoutMs=1000")
+	fmt.Println("frontend failure examples: fail=true, fail=drop, fail=timeout, fail=status")
+	fmt.Printf("frontend calls upstream at http://%s:3001/echo\n", upstreamHost)
 	return http.ListenAndServe("127.0.0.1:3000", mux)
 }
 
@@ -174,8 +199,8 @@ func startUpstream(upstreamHost string) error {
 		}
 	})
 
-	log.Printf("upstream listening on http://%s:3001/echo?message=hello&code=201", upstreamHost)
-	log.Printf("upstream POST example: curl -i -X POST 'http://%s:3001/echo?code=202&sleepMs=200' -H 'content-type: application/json' -d '{\"message\":\"hello\"}'", upstreamHost)
+	fmt.Printf("upstream listening on http://%s:3001/echo?message=hello&code=201\n", upstreamHost)
+	fmt.Printf("upstream POST example: curl -i -X POST 'http://%s:3001/echo?code=202&sleepMs=200' -H 'content-type: application/json' -d '{\"message\":\"hello\"}'\n", upstreamHost)
 	return http.ListenAndServe(":3001", mux)
 }
 
