@@ -27,6 +27,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
+		case "r", tea.KeyCtrlR.String():
+			if m.restarting {
+				return m, nil
+			}
+			if m.controls.Restart == nil {
+				return m, nil
+			}
+			m.restarting = true
+			return m, restartCmd(m.controls.Restart)
 		case "e":
 			m.showEvents = !m.showEvents
 		case "o":
@@ -39,11 +48,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case ErrMsg:
-		m.events = append(m.events, model.Event{
+		m.pushEvent(model.Event{
 			Time: time.Now().Local(),
 			Type: model.EventTypeWarn,
 			Body: fmt.Sprintf("tui event stream closed: %v", msg.err),
 		})
+		return m, nil
+
+	case RestartResultMsg:
+		m.restarting = false
+		if msg.err != nil {
+			m.pushEvent(model.Event{
+				Time: time.Now().Local(),
+				Type: model.EventTypeWarn,
+				Body: fmt.Sprintf("failed to restart process: %v", msg.err),
+			})
+		}
 		return m, nil
 
 	case EventMsg:

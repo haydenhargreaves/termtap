@@ -26,7 +26,11 @@ func Run(args []string) {
 	}
 	defer session.Stop()
 
-	if err := tui.Run(session.Events); err != nil {
+	controls := tui.Controls{
+		Restart: session.RestartProcess,
+	}
+
+	if err := tui.Run(session.Events, controls); err != nil {
 		log.Fatalln(err)
 	}
 }

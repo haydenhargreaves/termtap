@@ -50,6 +50,7 @@ func NewProcess(cmd model.Command, addr string, ch chan<- model.Event) *model.Pr
 		Command: cmd,
 		Exec:    proc,
 		Running: false,
+		Done:    make(chan struct{}),
 	}
 }
 
@@ -106,7 +107,7 @@ func UpdateStatus(proc *model.Process, running bool, ch chan<- model.Event) {
 	ch <- model.Event{
 		Time: time.Now().Local(),
 		Type: t,
-		Body: fmt.Sprintf("Set process pid '%d' status to %s", proc.Exec.Process.Pid, status),
+		Body: fmt.Sprintf("set process status to %s", status),
 		PID:  proc.Exec.Process.Pid,
 	}
 }

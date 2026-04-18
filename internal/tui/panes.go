@@ -23,7 +23,7 @@ func (m Model) renderStatusBar(w int) string {
 
 	avg := int(msSum) / max(1, len(m.requests))
 	left := fmt.Sprintf(" tap %3d reqs  |  %d err  | avg %dms", len(m.requests), errCount, avg)
-	right := "j/k nav  / search  tab panel  e events  o output  r replay  ctrl+r restart  q quit "
+	right := "j/k nav  / search  tab panel  e events  o output  r/^r restart  q quit "
 
 	spaceSize := max(w-(len(left)+len(right)), 0)
 	space := strings.Repeat(" ", spaceSize)
@@ -127,7 +127,7 @@ func (m Model) renderEventsPane(w, h int) []string {
 	for _, event := range events {
 		var (
 			eTime string = m.theme.TextMuted.Render(event.Time.Format("15:04:05") + " ")
-			eType string = getEventColor(m.theme, event.Type).Render(fmt.Sprintf("%-15s ", event.Type))
+			eType string = getEventColor(m.theme, event.Type).Render(fmt.Sprintf("%-17s ", event.Type))
 
 			avail int    = max(0, w-lipgloss.Width(eTime+eType))
 			body  string = clampRendered(m.theme.Text.Render(event.Body), avail)

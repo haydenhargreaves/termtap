@@ -15,7 +15,7 @@ func StartProcess(cmd model.Command, addr string, ch chan<- model.Event) (*model
 	ch <- model.Event{
 		Time: time.Now().Local(),
 		Type: model.EventTypeProcessStarting,
-		Body: fmt.Sprintf("spawning process '%s'", process.CommandString(cmd)),
+		Body: fmt.Sprintf("starting process '%s'", process.CommandString(cmd)),
 	}
 
 	proc := process.NewProcess(cmd, addr, ch)
@@ -38,7 +38,7 @@ func StopProcess(proc *model.Process, ch chan<- model.Event, sig syscall.Signal)
 	ch <- model.Event{
 		Time: time.Now().Local(),
 		Type: model.EventTypeProcessSignaled,
-		Body: fmt.Sprintf("process with pid '%d' is being killed", proc.Exec.Process.Pid),
+		Body: fmt.Sprintf("process received signal '%s'", sig.String()),
 		PID:  proc.Exec.Process.Pid,
 	}
 
@@ -56,13 +56,18 @@ func waitForProcessExit(proc *model.Process, ch chan<- model.Event) {
 	if proc == nil || proc.Exec == nil {
 		return
 	}
+	defer func() {
+		if proc.Done != nil {
+			close(proc.Done)
+		}
+	}()
 
 	if err := proc.Exec.Wait(); err != nil {
 		if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 			ch <- model.Event{
 				Time:     time.Now().Local(),
 				Type:     model.EventTypeProcessExited,
-				Body:     fmt.Sprintf("process pid '%d' exited", proc.Exec.Process.Pid),
+				Body:     "process exited",
 				PID:      proc.Exec.Process.Pid,
 				ExitCode: exitErr.ExitCode(),
 			}
@@ -79,12 +84,13 @@ func waitForProcessExit(proc *model.Process, ch chan<- model.Event) {
 		return
 	}
 
+	code := proc.Exec.ProcessState.ExitCode()
 	ch <- model.Event{
 		Time:     time.Now().Local(),
 		Type:     model.EventTypeProcessExited,
-		Body:     fmt.Sprintf("process pid '%d' exited", proc.Exec.Process.Pid),
+		Body:     "process exited",
 		PID:      proc.Exec.Process.Pid,
-		ExitCode: 0,
+		ExitCode: code,
 	}
 	process.UpdateStatus(proc, false, ch)
 }

@@ -11,4 +11,5 @@ type Process struct {
 	Command Command
 	Exec    *exec.Cmd
 	Running bool
+	Done    chan struct{}
 }

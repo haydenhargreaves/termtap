@@ -22,6 +22,7 @@ type Theme struct {
 	EventSession         lipgloss.Style
 	EventProcess         lipgloss.Style
 	EventProxy           lipgloss.Style
+	EventRestart         lipgloss.Style
 	EventRequestInFlight lipgloss.Style
 	EventSuccess         lipgloss.Style
 	EventWarn            lipgloss.Style
@@ -89,6 +90,10 @@ func newTheme() Theme {
 			Foreground(violetBlue).
 			Background(background).
 			Bold(true),
+		EventRestart: lipgloss.NewStyle().
+			Foreground(cyan).
+			Background(background).
+			Bold(true),
 		EventRequestInFlight: lipgloss.NewStyle().
 			Foreground(cyan).
 			Background(background).
@@ -135,6 +140,9 @@ func getEventColor(theme Theme, event model.EventType) lipgloss.Style {
 
 	case model.EventTypeRequestStarted:
 		return theme.EventRequestInFlight
+
+	case model.EventTypeProcessRestarting:
+		return theme.EventRestart
 
 	case model.EventTypeRequestFinished:
 		return theme.EventSuccess

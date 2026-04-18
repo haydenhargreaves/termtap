@@ -15,7 +15,8 @@ const (
 )
 
 type Model struct {
-	channel <-chan model.Event
+	channel  <-chan model.Event
+	controls Controls
 
 	events   []model.Event
 	requests []model.Request
@@ -27,13 +28,19 @@ type Model struct {
 	showEvents bool
 	showStd    bool
 	showSearch bool
+	restarting bool
 
 	now time.Time
 }
 
-func NewModel(ch <-chan model.Event) Model {
+type Controls struct {
+	Restart func() error
+}
+
+func NewModel(ch <-chan model.Event, controls Controls) Model {
 	return Model{
 		channel:    ch,
+		controls:   controls,
 		events:     make([]model.Event, 0, maxEvents),
 		requests:   make([]model.Request, 0, maxRequests),
 		width:      0,
@@ -41,12 +48,13 @@ func NewModel(ch <-chan model.Event) Model {
 		showEvents: false,
 		showStd:    false,
 		showSearch: false,
+		restarting: false,
 		theme:      newTheme(),
 	}
 }
 
-func Run(ch <-chan model.Event) error {
-	p := tea.NewProgram(NewModel(ch), tea.WithAltScreen())
+func Run(ch <-chan model.Event, controls Controls) error {
+	p := tea.NewProgram(NewModel(ch, controls), tea.WithAltScreen())
 	_, err := p.Run()
 	return err
 }
