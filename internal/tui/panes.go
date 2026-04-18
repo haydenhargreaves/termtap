@@ -23,7 +23,7 @@ func (m Model) renderStatusBar(w int) string {
 
 	avg := int(msSum) / max(1, len(m.requests))
 	left := fmt.Sprintf(" tap %3d reqs  |  %d err  | avg %dms", len(m.requests), errCount, avg)
-	right := "j/k nav  / search  tab panel  e events  o output  r replay  q quit "
+	right := "j/k nav  / search  tab panel  e events  o output  r replay  ctrl+r restart  q quit "
 
 	spaceSize := max(w-(len(left)+len(right)), 0)
 	space := strings.Repeat(" ", spaceSize)
@@ -31,6 +31,7 @@ func (m Model) renderStatusBar(w int) string {
 	return m.theme.Header.Render(left + space + right)
 }
 
+// TODO: Implement
 func (m Model) renderSearchPane(w, h int) []string {
 	lines := make([]string, h)
 	for y := range lines {
@@ -91,6 +92,7 @@ func (m Model) renderRequestPane(w, h int) []string {
 	return lines
 }
 
+// TODO: Implement
 func (m Model) renderDetailsPane(w, h int) []string {
 	lines := make([]string, h)
 	for y := range lines {
@@ -123,22 +125,33 @@ func (m Model) renderEventsPane(w, h int) []string {
 	lines := []string{status}
 
 	for _, event := range events {
-		line := fmt.Sprintf(
-			"%s %-15s %s",
-			event.Time.Format("15:04:05"),
-			event.Type,
-			event.Body,
+		var (
+			eTime string = m.theme.TextMuted.Render(event.Time.Format("15:04:05") + " ")
+			eType string = getEventColor(m.theme, event.Type).Render(fmt.Sprintf("%-15s ", event.Type))
+
+			avail int    = max(0, w-lipgloss.Width(eTime+eType))
+			body  string = clampRendered(m.theme.Text.Render(event.Body), avail)
 		)
-		if event.PID > 0 {
-			line = fmt.Sprintf(
-				"%s %-15s %d %s",
-				event.Time.Format("15:04:05"),
-				event.Type,
-				event.PID,
-				event.Body,
-			)
+
+		if event.Type == model.EventTypeRequestFailed || event.Type == model.EventTypeFatal {
+			body = clampRendered(m.theme.TextError.Render(event.Body), avail)
+			eTime = m.theme.TextMutedError.Render(event.Time.Format("15:04:05") + " ")
 		}
-		lines = append(lines, truncate(line, w))
+
+		line := eTime + eType + body
+		if event.PID > 0 {
+			pid := m.theme.TextMuted.Render(fmt.Sprintf("%d ", event.PID))
+
+			avail = max(0, w-lipgloss.Width(eTime+eType+pid))
+			body = clampRendered(m.theme.Text.Render(event.Body), avail)
+			line = eTime + eType + pid + body
+		}
+
+		if event.Type == model.EventTypeRequestFailed || event.Type == model.EventTypeFatal {
+			line += m.theme.TextError.Render(strings.Repeat(" ", w-lipgloss.Width(line)))
+		}
+
+		lines = append(lines, line)
 	}
 
 	// Cleanup

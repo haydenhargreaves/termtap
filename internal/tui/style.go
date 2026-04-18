@@ -3,6 +3,7 @@ package tui
 import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
+	"termtap.dev/internal/model"
 )
 
 type Theme struct {
@@ -17,10 +18,15 @@ type Theme struct {
 	TextError      lipgloss.Style
 	TextMutedError lipgloss.Style
 
-	EventGreen  lipgloss.Style
-	EventRed    lipgloss.Style
-	EventBlue   lipgloss.Style
-	EventOrange lipgloss.Style
+	EventDefault         lipgloss.Style
+	EventSession         lipgloss.Style
+	EventProcess         lipgloss.Style
+	EventProxy           lipgloss.Style
+	EventRequestInFlight lipgloss.Style
+	EventSuccess         lipgloss.Style
+	EventWarn            lipgloss.Style
+	EventError           lipgloss.Style
+	EventFatal           lipgloss.Style
 }
 
 const background = lipgloss.Color("#010e1f")
@@ -29,8 +35,11 @@ const text = lipgloss.Color("#dfe5ed")
 const textMuted = lipgloss.Color("#7c7e80")
 
 const blue = lipgloss.Color("#2280f2")
+const cyan = lipgloss.Color("#22b8f2")
+const violetBlue = lipgloss.Color("#6f7dff")
 const orange = lipgloss.Color("#f2a813")
 const red = lipgloss.Color("#e6130b")
+const fatalRed = lipgloss.Color("#ff4d4d")
 const green = lipgloss.Color("#10e31e")
 
 func newTheme() Theme {
@@ -64,18 +73,42 @@ func newTheme() Theme {
 			Foreground(textMuted).
 			Background(backgroundError),
 
-		EventGreen: lipgloss.NewStyle().
-			Foreground(green).
-			Background(background),
-		EventBlue: lipgloss.NewStyle().
+		EventDefault: lipgloss.NewStyle().
+			Foreground(text).
+			Background(background).
+			Bold(true),
+		EventSession: lipgloss.NewStyle().
+			Foreground(textMuted).
+			Background(background).
+			Bold(true),
+		EventProcess: lipgloss.NewStyle().
 			Foreground(blue).
-			Background(background),
-		EventRed: lipgloss.NewStyle().
-			Foreground(red).
-			Background(backgroundError),
-		EventOrange: lipgloss.NewStyle().
+			Background(background).
+			Bold(true),
+		EventProxy: lipgloss.NewStyle().
+			Foreground(violetBlue).
+			Background(background).
+			Bold(true),
+		EventRequestInFlight: lipgloss.NewStyle().
+			Foreground(cyan).
+			Background(background).
+			Bold(true),
+		EventSuccess: lipgloss.NewStyle().
+			Foreground(green).
+			Background(background).
+			Bold(true),
+		EventWarn: lipgloss.NewStyle().
 			Foreground(orange).
-			Background(background),
+			Background(background).
+			Bold(true),
+		EventError: lipgloss.NewStyle().
+			Foreground(red).
+			Background(backgroundError).
+			Bold(true),
+		EventFatal: lipgloss.NewStyle().
+			Foreground(fatalRed).
+			Background(backgroundError).
+			Bold(true),
 	}
 }
 
@@ -87,4 +120,43 @@ func clampRendered(s string, maxCols int) string {
 		return s
 	}
 	return ansi.Truncate(s, maxCols, "...")
+}
+
+func getEventColor(theme Theme, event model.EventType) lipgloss.Style {
+	switch event {
+	case model.EventTypeSessionStarted,
+		model.EventTypeSessionStopped:
+		return theme.EventSession
+
+	case model.EventTypeProxyStarted,
+		model.EventTypeProxyStarting,
+		model.EventTypeProxyStopped:
+		return theme.EventProxy
+
+	case model.EventTypeRequestStarted:
+		return theme.EventRequestInFlight
+
+	case model.EventTypeRequestFinished:
+		return theme.EventSuccess
+
+	case model.EventTypeFatal:
+		return theme.EventFatal
+
+	case model.EventTypeRequestFailed:
+		return theme.EventError
+
+	case model.EventTypeProcessStarting,
+		model.EventTypeProcessStarted,
+		model.EventTypeProcessExited,
+		model.EventTypeProcessSignaled,
+		model.EventTypeProcessStdout,
+		model.EventTypeProcessStderr:
+		return theme.EventProcess
+
+	case model.EventTypeWarn:
+		return theme.EventWarn
+
+	default:
+		return theme.EventDefault
+	}
 }

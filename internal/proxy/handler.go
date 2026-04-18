@@ -65,7 +65,7 @@ func proxyHandler(ch chan<- model.Event) http.Handler {
 			ch <- model.Event{
 				Time:    time.Now().Local(),
 				Type:    model.EventTypeWarn,
-				Body:    fmt.Sprintf("(%s) failed to read request body", request.ID),
+				Body:    fmt.Sprintf("(%s) failed to read request body: %v", getEndOfUUID(request.ID), err),
 				Request: request,
 			}
 		} else {
@@ -86,7 +86,7 @@ func proxyHandler(ch chan<- model.Event) http.Handler {
 		ch <- model.Event{
 			Time:    time.Now().Local(),
 			Type:    model.EventTypeRequestStarted,
-			Body:    fmt.Sprintf("-> %+v", request),
+			Body:    fmt.Sprintf("(%s) %s %s", getEndOfUUID(request.ID), request.Method, request.RawURL),
 			Request: request,
 		}
 
@@ -103,7 +103,7 @@ func proxyHandler(ch chan<- model.Event) http.Handler {
 			ch <- model.Event{
 				Time:    time.Now().Local(),
 				Type:    model.EventTypeRequestFailed,
-				Body:    fmt.Sprintf("upstream error for %s %s: %v", outReq.Method, outReq.URL.String(), err),
+				Body:    fmt.Sprintf("(%s) upstream error: %v", getEndOfUUID(request.ID), err),
 				Request: request,
 			}
 			return
@@ -115,7 +115,7 @@ func proxyHandler(ch chan<- model.Event) http.Handler {
 			ch <- model.Event{
 				Time:    time.Now().Local(),
 				Type:    model.EventTypeWarn,
-				Body:    fmt.Sprintf("(%s) failed to read response body", request.ID),
+				Body:    fmt.Sprintf("(%s) failed to read response body: %v", getEndOfUUID(request.ID), err),
 				Request: request,
 			}
 		} else {
@@ -133,7 +133,7 @@ func proxyHandler(ch chan<- model.Event) http.Handler {
 			ch <- model.Event{
 				Time: time.Now().Local(),
 				Type: model.EventTypeRequestFailed,
-				Body: fmt.Sprintf("write response body %s %s: %v", outReq.Method, outReq.URL.String(), err),
+				Body: fmt.Sprintf("(%s) failed to write response body: %v", getEndOfUUID(request.ID), err),
 			}
 			return
 		}
@@ -146,7 +146,7 @@ func proxyHandler(ch chan<- model.Event) http.Handler {
 		ch <- model.Event{
 			Time:    time.Now().Local(),
 			Type:    model.EventTypeRequestFinished,
-			Body:    fmt.Sprintf("<- %+v %s", request, formatHeaders(resp.Request.Header)),
+			Body:    fmt.Sprintf("(%s) %s %s %d %dms", getEndOfUUID(request.ID), request.Method, request.RawURL, request.Status, request.Duration.Milliseconds()),
 			Request: request,
 		}
 	})
@@ -197,6 +197,10 @@ func formatHeaders(headers http.Header) string {
 	sort.Strings(parts)
 
 	return strings.Join(parts, ", ")
+}
+
+func getEndOfUUID(id uuid.UUID) string {
+	return id.String()[24:]
 }
 
 // BUG: Not sure if this actually works, seems to favor the 502
