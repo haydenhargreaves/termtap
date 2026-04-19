@@ -59,7 +59,7 @@ func injectEnv(proc *exec.Cmd, addr string) {
 	injected := []string{
 		"HTTP_PROXY=" + proxyAddr,
 		"http_proxy=" + proxyAddr,
-		"HTTPS_PROXY=" + proxyAddr, // TODO: HTTP NOT SUPPORTED
+		"HTTPS_PROXY=" + proxyAddr,
 		"https_proxy=" + proxyAddr,
 		// "ALL_PROXY=" + proxyAddr,
 		// "all_proxy=" + proxyAddr,

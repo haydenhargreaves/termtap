@@ -27,7 +27,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
-		case "r", tea.KeyCtrlR.String():
+		case tea.KeyCtrlR.String():
 			if m.restarting {
 				return m, nil
 			}
@@ -95,6 +95,10 @@ func (m *Model) applyMessage(msg model.Event) {
 }
 
 func (m *Model) createRequest(req model.Request) {
+	if req.Method == "CONNECT" {
+		return
+	}
+
 	m.requests = append(m.requests, req)
 
 	// If we passed the max, delete the first one

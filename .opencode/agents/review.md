@@ -11,6 +11,7 @@ permission:
     "git log*": allow
     "git *": allow
     "grep *": allow
+    "go *": allow
   webfetch: deny
 color: "#e01da6"
 ---

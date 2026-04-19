@@ -4,6 +4,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,6 +14,14 @@ type ProxyServer struct {
 	Listener *net.Listener
 	Server   *http.Server
 	Url      string
+
+	CACertPath string
+	CAReady    bool
+	CACreated  bool
+	CATrusted  bool
+
+	ConnMu sync.Mutex
+	Conns  map[net.Conn]struct{}
 }
 
 type Request struct {

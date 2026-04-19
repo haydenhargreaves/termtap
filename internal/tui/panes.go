@@ -23,7 +23,7 @@ func (m Model) renderStatusBar(w int) string {
 
 	avg := int(msSum) / max(1, len(m.requests))
 	left := fmt.Sprintf(" tap %3d reqs  |  %d err  | avg %dms", len(m.requests), errCount, avg)
-	right := "j/k nav  / search  tab panel  e events  o output  r/^r restart  q quit "
+	right := "j/k nav  / search  tab panel  e events  o output  ^r restart  q quit "
 
 	spaceSize := max(w-(len(left)+len(right)), 0)
 	space := strings.Repeat(" ", spaceSize)
@@ -57,7 +57,7 @@ func (m Model) renderRequestPane(w, h int) []string {
 		left := fmt.Sprintf(
 			" %-7s %-24s %s",
 			strings.ToUpper(req.Method),
-			req.Host,
+			truncate(req.Host, 24),
 			req.URL,
 		)
 		right := fmt.Sprintf(
@@ -98,6 +98,7 @@ func (m Model) renderDetailsPane(w, h int) []string {
 	for y := range lines {
 		lines[y] = m.theme.Text.Render(strings.Repeat(" ", w))
 	}
+
 	return lines
 }
 
