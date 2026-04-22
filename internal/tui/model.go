@@ -14,12 +14,26 @@ const (
 	maxRequests = 256
 )
 
+const (
+	focusPaneRequests = iota
+	focusPaneDetails
+	focusPaneEvents
+	focusPaneStd
+)
+
 type Model struct {
 	channel  <-chan model.Event
 	controls Controls
 
-	events   []model.Event
-	requests []model.Request
+	events        []model.Event
+	requests      []model.Request
+	requestCursor int
+	requestScroll int
+	detailsTab    int
+	detailsScroll int
+	eventsScroll  int
+	stdScroll     int
+	focusedPane   int
 
 	width  int
 	height int
@@ -39,17 +53,24 @@ type Controls struct {
 
 func NewModel(ch <-chan model.Event, controls Controls) Model {
 	return Model{
-		channel:    ch,
-		controls:   controls,
-		events:     make([]model.Event, 0, maxEvents),
-		requests:   make([]model.Request, 0, maxRequests),
-		width:      0,
-		height:     0,
-		showEvents: false,
-		showStd:    false,
-		showSearch: false,
-		restarting: false,
-		theme:      newTheme(),
+		channel:       ch,
+		controls:      controls,
+		events:        make([]model.Event, 0, maxEvents),
+		requests:      make([]model.Request, 0, maxRequests),
+		requestCursor: 0,
+		requestScroll: 0,
+		detailsTab:    detailsTabOverview,
+		detailsScroll: 0,
+		eventsScroll:  0,
+		stdScroll:     0,
+		focusedPane:   focusPaneRequests,
+		width:         0,
+		height:        0,
+		showEvents:    false,
+		showStd:       false,
+		showSearch:    false,
+		restarting:    false,
+		theme:         newTheme(),
 	}
 }
 

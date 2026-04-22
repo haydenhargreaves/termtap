@@ -9,14 +9,17 @@ import (
 type Theme struct {
 	Background lipgloss.Style
 
-	Header      lipgloss.Style
-	EventHeader lipgloss.Style
-	StdHeader   lipgloss.Style
+	Header          lipgloss.Style
+	EventHeader     lipgloss.Style
+	EventPaneHeader lipgloss.Style
+	StdHeader       lipgloss.Style
 
-	Text           lipgloss.Style
-	TextMuted      lipgloss.Style
-	TextError      lipgloss.Style
-	TextMutedError lipgloss.Style
+	Text            lipgloss.Style
+	TextMuted       lipgloss.Style
+	TextError       lipgloss.Style
+	TextMutedError  lipgloss.Style
+	RequestSelected lipgloss.Style
+	HeaderKey       lipgloss.Style
 
 	EventDefault         lipgloss.Style
 	EventSession         lipgloss.Style
@@ -56,6 +59,10 @@ func newTheme() Theme {
 			Bold(true).
 			Foreground(background).
 			Background(blue),
+		EventPaneHeader: lipgloss.NewStyle().
+			Bold(true).
+			Foreground(background).
+			Background(green),
 		StdHeader: lipgloss.NewStyle().
 			Bold(true).
 			Foreground(background).
@@ -73,6 +80,13 @@ func newTheme() Theme {
 		TextMutedError: lipgloss.NewStyle().
 			Foreground(textMuted).
 			Background(backgroundError),
+		RequestSelected: lipgloss.NewStyle().
+			Foreground(background).
+			Background(blue).
+			Bold(true),
+		HeaderKey: lipgloss.NewStyle().
+			Foreground(cyan).
+			Background(background),
 
 		EventDefault: lipgloss.NewStyle().
 			Foreground(text).

@@ -4,13 +4,13 @@ import "strings"
 
 func (m Model) renderAppPane() string {
 	// Constant height offset
-	constHeightOffset := 1
+	constHeightOffset := 2
 
 	var (
 		searchW int = max(0, m.width)
 		searchH int = 1
 
-		reqW int = max(0, int(float64(m.width)*0.55))
+		reqW int = max(0, int(float64(m.width)*0.5))
 		detW int = max(0, m.width-reqW)
 
 		reqH int = max(0, m.height-constHeightOffset)
@@ -67,6 +67,9 @@ func (m Model) renderAppPane() string {
 		stdPane := m.renderStdPane(stdW, stdH)
 		screen = append(screen, stdPane...)
 	}
+
+	statusBottom := m.renderBottomStatusBar(m.width)
+	screen = append(screen, statusBottom)
 
 	if len(screen) != m.height {
 		return "height of screen does not match terminal height"
