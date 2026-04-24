@@ -24,7 +24,7 @@ export function InstallSection() {
       </div>
 
       <p className="mt-3 text-xs leading-6 text-slate-500">
-        Choose your OS/architecture asset, unpack it, and move <code className="px-0 text-slate-200">tap</code>
+        Choose your OS/architecture asset, unpack it, and move <code className="px-0 text-slate-200">tap </code>
         into your PATH. Run{' '}
         <code className="px-0 text-slate-200">tap cert </code>
         if you need the HTTPS trust path.
