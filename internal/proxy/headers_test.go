@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"net/http"
+	"net/url"
 	"reflect"
 	"testing"
 )
@@ -153,5 +154,65 @@ func TestCopyHeaders(t *testing.T) {
 
 	if !reflect.DeepEqual(dest, want) {
 		t.Fatalf("copyHeaders() dest = %#v, want %#v", dest, want)
+	}
+}
+
+func TestCaptureRequestHeaders(t *testing.T) {
+	t.Parallel()
+
+	u, err := url.Parse("https://url-host.example/path")
+	if err != nil {
+		t.Fatalf("url.Parse() error = %v", err)
+	}
+
+	req := &http.Request{
+		URL:              u,
+		Host:             "host-header.example",
+		ContentLength:    42,
+		TransferEncoding: []string{"chunked"},
+		Header: http.Header{
+			"Content-Type": {"application/json"},
+		},
+	}
+
+	got := captureRequestHeaders(req)
+
+	if got.Get("Host") != "host-header.example" {
+		t.Fatalf("Host = %q, want host-header.example", got.Get("Host"))
+	}
+	if got.Get("Content-Length") != "42" {
+		t.Fatalf("Content-Length = %q, want 42", got.Get("Content-Length"))
+	}
+	if got.Get("Transfer-Encoding") != "chunked" {
+		t.Fatalf("Transfer-Encoding = %q, want chunked", got.Get("Transfer-Encoding"))
+	}
+
+	got.Set("Content-Type", "modified")
+	if req.Header.Get("Content-Type") == "modified" {
+		t.Fatal("captureRequestHeaders() should clone header map")
+	}
+}
+
+func TestCaptureResponseHeaders(t *testing.T) {
+	t.Parallel()
+
+	resp := &http.Response{
+		Header:           http.Header{"Content-Type": {"application/json"}},
+		ContentLength:    128,
+		TransferEncoding: []string{"chunked"},
+	}
+
+	got := captureResponseHeaders(resp)
+
+	if got.Get("Content-Length") != "128" {
+		t.Fatalf("Content-Length = %q, want 128", got.Get("Content-Length"))
+	}
+	if got.Get("Transfer-Encoding") != "chunked" {
+		t.Fatalf("Transfer-Encoding = %q, want chunked", got.Get("Transfer-Encoding"))
+	}
+
+	got.Set("Content-Type", "modified")
+	if resp.Header.Get("Content-Type") == "modified" {
+		t.Fatal("captureResponseHeaders() should clone header map")
 	}
 }

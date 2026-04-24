@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 )
@@ -26,8 +27,7 @@ var hopByHopHeaders = []string{
 }
 
 // Remove headers that are only required for client<->proxy and proxy<->server communication.
-// Otherwise known as hop-by-hop headers. We do not want to show these to users since they are
-// used only for internal functioning for the proxy server.
+// Otherwise known as hop-by-hop headers.
 func stripHopByHopHeaders(headers http.Header) {
 	if headers == nil {
 		return
@@ -43,6 +43,50 @@ func stripHopByHopHeaders(headers http.Header) {
 			headers.Del(strings.TrimSpace(key))
 		}
 	}
+}
+
+func captureRequestHeaders(req *http.Request) http.Header {
+	if req == nil {
+		return http.Header{}
+	}
+
+	headers := req.Header.Clone()
+
+	host := strings.TrimSpace(req.Host)
+	if host == "" && req.URL != nil {
+		host = strings.TrimSpace(req.URL.Host)
+	}
+	if host != "" {
+		headers.Set("Host", host)
+	}
+
+	if req.ContentLength > 0 && headers.Get("Content-Length") == "" {
+		headers.Set("Content-Length", fmt.Sprintf("%d", req.ContentLength))
+	}
+
+	if len(req.TransferEncoding) > 0 && headers.Get("Transfer-Encoding") == "" {
+		headers.Set("Transfer-Encoding", strings.Join(req.TransferEncoding, ", "))
+	}
+
+	return headers
+}
+
+func captureResponseHeaders(resp *http.Response) http.Header {
+	if resp == nil {
+		return http.Header{}
+	}
+
+	headers := resp.Header.Clone()
+
+	if resp.ContentLength > 0 && headers.Get("Content-Length") == "" {
+		headers.Set("Content-Length", fmt.Sprintf("%d", resp.ContentLength))
+	}
+
+	if len(resp.TransferEncoding) > 0 && headers.Get("Transfer-Encoding") == "" {
+		headers.Set("Transfer-Encoding", strings.Join(resp.TransferEncoding, ", "))
+	}
+
+	return headers
 }
 
 // Return a new set of headers that has sensitive headers redacted.

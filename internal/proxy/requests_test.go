@@ -95,11 +95,14 @@ func TestRoundTripCapturedRequest_Success(t *testing.T) {
 	if got := captured.RequestHeaders.Get("Authorization"); got != "[REDACTED]" {
 		t.Fatalf("Authorization header = %q, want [REDACTED]", got)
 	}
+	if got := captured.RequestHeaders.Get("Host"); got != "example.com" {
+		t.Fatalf("Host header = %q, want example.com", got)
+	}
 	if got := captured.ResponseHeaders.Get("Set-Cookie"); got != "[REDACTED]" {
 		t.Fatalf("Set-Cookie header = %q, want [REDACTED]", got)
 	}
-	if got := captured.ResponseHeaders.Get("Connection"); got != "" {
-		t.Fatalf("Connection should be stripped from response headers, got %q", got)
+	if got := captured.ResponseHeaders.Get("Connection"); got != "close" {
+		t.Fatalf("captured Connection header = %q, want close", got)
 	}
 
 	events := drainEvents(t, ch, 1, time.Second)

@@ -37,6 +37,7 @@ func roundTripCapturedRequest(req *http.Request, transport http.RoundTripper, ch
 			outReq.Host = defaultHost
 		}
 	}
+	capturedRequestHeaders := captureRequestHeaders(outReq)
 	stripHopByHopHeaders(outReq.Header)
 	requestPreview := newBodyPreview(outReq.Header.Get("Content-Type"))
 	if outReq.Body != nil {
@@ -48,7 +49,7 @@ func roundTripCapturedRequest(req *http.Request, transport http.RoundTripper, ch
 	request.QueryMap = outReq.URL.Query()
 	request.Host = outReq.Host
 	request.Method = outReq.Method
-	request.RequestHeaders = redactHeaders(outReq.Header)
+	request.RequestHeaders = redactHeaders(capturedRequestHeaders)
 	request.RawURL = outReq.URL.String()
 	if request.RawURL == "" {
 		request.RawURL = outReq.Host + outReq.URL.RequestURI()
@@ -62,13 +63,14 @@ func roundTripCapturedRequest(req *http.Request, transport http.RoundTripper, ch
 		return resp, request, nil, err
 	}
 
+	capturedResponseHeaders := captureResponseHeaders(resp)
 	stripHopByHopHeaders(resp.Header)
 	responsePreview := newBodyPreview(resp.Header.Get("Content-Type"))
 	if resp.Body != nil {
 		resp.Body = &previewReadCloser{ReadCloser: resp.Body, preview: responsePreview}
 	}
 
-	request.ResponseHeaders = redactHeaders(resp.Header)
+	request.ResponseHeaders = redactHeaders(capturedResponseHeaders)
 	return resp, request, responsePreview, nil
 }
 
