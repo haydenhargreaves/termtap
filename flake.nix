@@ -19,6 +19,9 @@
             go-tools
             gcc_multi
             glibc_multi
+            nodejs_24
+            tailwindcss_4
+            tailwindcss-language-server
           ];
 
           name = "TermTap";
