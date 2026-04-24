@@ -34,8 +34,7 @@ jobs:
       - name: Build
         run: |
           mkdir -p dist
-          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
-            go build -o dist/termtap-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/tap/main.go
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o dist/termtap-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/tap/main.go
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
