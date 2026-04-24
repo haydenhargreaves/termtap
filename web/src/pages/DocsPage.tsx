@@ -111,20 +111,22 @@ export function DocsPage() {
 
           <DocsSection id="install" number="01" title="Install">
             <p>
-              Download the latest binary from{' '}
-              <a className="text-emerald-400 underline-offset-2 hover:underline" href="https://github.com/termtap/releases">
+              Download the binary for your OS from{' '}
+              <a className="text-emerald-400 underline-offset-2 hover:underline" href="https://github.com/haydenhargreaves/termtap/releases">
                 GitHub Releases
               </a>
               :
             </p>
             <CommandBlock>
-              <span className="text-slate-400">$ curl -L -o termtap.tar.gz </span>
-              <span className="text-emerald-400">https://github.com/termtap/releases/latest</span>
+              <span className="text-emerald-400">https://github.com/haydenhargreaves/termtap/releases</span>
             </CommandBlock>
             <p className="text-slate-500 text-sm">
-              Unpack the binary, place it on your PATH, and run <code className="px-0 text-slate-200">tap cert </code>
+              Choose your OS/architecture asset, unpack it, and move <code className="px-0 text-slate-200">tap </code>
+              into your PATH. Run{' '}
+              <code className="px-0 text-slate-200">tap cert </code>
               if you need the HTTPS trust path.
             </p>
+            <p className="text-slate-600 text-xs">Supported: macOS, Linux, Windows</p>
             <p className="text-slate-600 text-xs">
               If demand for other install methods grows, they can be added later.
             </p>
@@ -234,7 +236,7 @@ export function DocsPage() {
             </ul>
             <p className="text-slate-500 text-sm">
               Last updated: 2026-04-19. Questions?{' '}
-              <a className="text-slate-300 underline-offset-2 hover:underline" href="https://github.com">
+              <a className="text-slate-300 underline-offset-2 hover:underline" href="https://github.com/haydenhargreaves/termtap">
                 Open an issue.
               </a>
             </p>
@@ -246,7 +248,7 @@ export function DocsPage() {
             </a>
             <a
               className="transition-colors hover:text-slate-200 focus-visible:text-slate-200"
-              href="https://github.com"
+              href="https://github.com/haydenhargreaves/termtap"
               target="_blank"
               rel="noreferrer"
             >

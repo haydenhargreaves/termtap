@@ -42,7 +42,7 @@ export function HeroSection() {
         </a>
         <a
           className="rounded-md border border-slate-800 px-5 py-2.5 text-slate-200 transition-colors hover:border-emerald-400 focus-visible:border-emerald-400"
-          href="https://github.com"
+          href="https://github.com/haydenhargreaves/termtap"
           target="_blank"
           rel="noreferrer"
         >

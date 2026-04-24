@@ -21,7 +21,7 @@ export function StatusSection() {
         <p className="mt-4 max-w-3xl text-xs leading-6 text-slate-500 md:text-sm">
           Expect rough edges, occasional breaking changes, and missing features. Bug reports and
           feedback on{' '}
-          <a className="text-slate-200 underline-offset-2 hover:underline" href="https://github.com">
+          <a className="text-slate-200 underline-offset-2 hover:underline" href="https://github.com/haydenhargreaves/termtap">
             GitHub
           </a>{' '}
           are very welcome.

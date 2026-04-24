@@ -42,7 +42,7 @@ export function SiteHeader({ page, onNavigate }: SiteHeaderProps) {
         </a>
         <a
           className={`${sharedLinkClasses} text-slate-500`}
-          href="https://github.com"
+          href="https://github.com/haydenhargreaves/termtap"
           target="_blank"
           rel="noreferrer"
         >
