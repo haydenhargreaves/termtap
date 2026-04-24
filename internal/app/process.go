@@ -4,12 +4,17 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"sync"
 	"syscall"
 	"time"
 
 	"termtap.dev/internal/model"
 	"termtap.dev/internal/process"
 )
+
+var killEscalationDelay = 1500 * time.Millisecond
+var scheduleKillEscalation = time.AfterFunc
+var killEscalationMu sync.RWMutex
 
 func StartProcess(cmd model.Command, addr string, ch chan<- model.Event) (*model.Process, error) {
 	ch <- model.Event{
@@ -44,12 +49,16 @@ func StopProcess(proc *model.Process, ch chan<- model.Event, sig syscall.Signal)
 
 	_ = process.SignalProcess(proc.Exec, sig)
 
-	go func() {
-		time.Sleep(1500 * time.Millisecond)
+	killEscalationMu.RLock()
+	delay := killEscalationDelay
+	scheduler := scheduleKillEscalation
+	killEscalationMu.RUnlock()
+
+	scheduler(delay, func() {
 		if process.ProcessAlive(proc.Exec) {
 			_ = process.SignalProcess(proc.Exec, syscall.SIGKILL)
 		}
-	}()
+	})
 }
 
 func waitForProcessExit(proc *model.Process, ch chan<- model.Event) {

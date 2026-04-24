@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"runtime"
@@ -16,6 +17,23 @@ import (
 // This should be configurable at some point, just in case they build on 8080
 const proxy_addr = "127.0.0.1:8080"
 
+var fatalExit = log.Fatalln
+var stdoutWriter io.Writer = stdioRef{isErr: false}
+var stderrWriter io.Writer = stdioRef{isErr: true}
+var startSessionFn = app.StartSession
+var runTUIFn = tui.Run
+
+type stdioRef struct {
+	isErr bool
+}
+
+func (w stdioRef) Write(p []byte) (int, error) {
+	if w.isErr {
+		return os.Stderr.Write(p)
+	}
+	return os.Stdout.Write(p)
+}
+
 func Run(args []string) {
 	if len(args) >= 2 && args[1] == "cert" {
 		runCert()
@@ -28,9 +46,10 @@ func Run(args []string) {
 		return
 	}
 
-	session, err := app.StartSession(cmd, proxy_addr)
+	session, err := startSessionFn(cmd, proxy_addr)
 	if err != nil {
-		log.Fatalln(err)
+		fatalExit(err)
+		return
 	}
 	defer session.Stop()
 
@@ -38,8 +57,9 @@ func Run(args []string) {
 		Restart: session.RestartProcess,
 	}
 
-	if err := tui.Run(session.Events, controls); err != nil {
-		log.Fatalln(err)
+	if err := runTUIFn(session.Events, controls); err != nil {
+		fatalExit(err)
+		return
 	}
 }
 
@@ -67,49 +87,50 @@ usage:
 	tap run -- <command> [args...]
 `
 
-	fmt.Fprintln(os.Stderr, helpText)
+	fmt.Fprintln(stderrWriter, helpText)
 }
 
 func runCert() {
 	ca, err := proxy.EnsureCertificateAuthority()
 	if err != nil {
-		log.Fatalln(err)
+		fatalExit(err)
+		return
 	}
 
 	certPath := ca.CertPath()
 	quotedCertPath := strconv.Quote(certPath)
-	fmt.Printf("Certificate path: %s\n", certPath)
+	fmt.Fprintf(stdoutWriter, "Certificate path: %s\n", certPath)
 	if ca.WasCreated() {
-		fmt.Println("Created a new local HTTPS interception CA.")
+		fmt.Fprintln(stdoutWriter, "Created a new local HTTPS interception CA.")
 	} else {
-		fmt.Println("Using existing local HTTPS interception CA.")
+		fmt.Fprintln(stdoutWriter, "Using existing local HTTPS interception CA.")
 	}
 
 	trusted, err := ca.IsTrustedBySystem()
 	if err != nil {
-		fmt.Printf("System trust check failed: %v\n", err)
+		fmt.Fprintf(stdoutWriter, "System trust check failed: %v\n", err)
 	} else if trusted {
-		fmt.Println("System trust store: trusted")
+		fmt.Fprintln(stdoutWriter, "System trust store: trusted")
 	} else {
-		fmt.Println("System trust store: not trusted")
+		fmt.Fprintln(stdoutWriter, "System trust store: not trusted")
 	}
 
 	if runtime.GOOS != "linux" {
-		fmt.Println("Install this certificate into your OS or client trust store to inspect HTTPS traffic.")
+		fmt.Fprintln(stdoutWriter, "Install this certificate into your OS or client trust store to inspect HTTPS traffic.")
 		return
 	}
 
-	fmt.Println()
-	fmt.Println("Trust instructions (Linux):")
-	fmt.Println("Debian/Ubuntu:")
-	fmt.Printf("  sudo cp %s /usr/local/share/ca-certificates/termtap.crt\n", quotedCertPath)
-	fmt.Println("  sudo update-ca-certificates")
-	fmt.Println("Fedora/RHEL/CentOS:")
-	fmt.Printf("  sudo cp %s /etc/pki/ca-trust/source/anchors/termtap.crt\n", quotedCertPath)
-	fmt.Println("  sudo update-ca-trust")
-	fmt.Println("Arch:")
-	fmt.Printf("  sudo trust anchor %s\n", quotedCertPath)
-	fmt.Println()
-	fmt.Println("Quick curl test:")
-	fmt.Printf("  curl --proxy http://%s --cacert %s https://example.com\n", proxy_addr, quotedCertPath)
+	fmt.Fprintln(stdoutWriter)
+	fmt.Fprintln(stdoutWriter, "Trust instructions (Linux):")
+	fmt.Fprintln(stdoutWriter, "Debian/Ubuntu:")
+	fmt.Fprintf(stdoutWriter, "  sudo cp %s /usr/local/share/ca-certificates/termtap.crt\n", quotedCertPath)
+	fmt.Fprintln(stdoutWriter, "  sudo update-ca-certificates")
+	fmt.Fprintln(stdoutWriter, "Fedora/RHEL/CentOS:")
+	fmt.Fprintf(stdoutWriter, "  sudo cp %s /etc/pki/ca-trust/source/anchors/termtap.crt\n", quotedCertPath)
+	fmt.Fprintln(stdoutWriter, "  sudo update-ca-trust")
+	fmt.Fprintln(stdoutWriter, "Arch:")
+	fmt.Fprintf(stdoutWriter, "  sudo trust anchor %s\n", quotedCertPath)
+	fmt.Fprintln(stdoutWriter)
+	fmt.Fprintln(stdoutWriter, "Quick curl test:")
+	fmt.Fprintf(stdoutWriter, "  curl --proxy http://%s --cacert %s https://example.com\n", proxy_addr, quotedCertPath)
 }
