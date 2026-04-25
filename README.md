@@ -4,7 +4,7 @@
   </a>
 </p>
 
-<p align="center" style="font-size: 42px;"><strong>Termtap</strong></p>
+<h3 align="center">Termtap</h3>
 <p align="center">Tap into your app's API traffic from the terminal.</p>
 
 <p align="center">
