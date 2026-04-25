@@ -12,14 +12,15 @@ export function SiteHeader({ page, onNavigate }: SiteHeaderProps) {
 
   return (
     <header className="flex items-center justify-between px-5 pb-2 pt-6 text-xs md:px-8 md:text-sm">
-        <a className="text-slate-200 no-underline" href="/" onClick={(event) => {
+      <a
+        className="inline-flex items-center no-underline"
+        href="/"
+        onClick={(event) => {
           event.preventDefault()
           onNavigate('/')
-        }}>
-        <span className="mr-1 text-emerald-400" aria-hidden="true">
-          ~
-        </span>
-        termtap
+        }}
+      >
+        <img src="/logo-termtap-concept-no-undertext.svg" alt="Termtap" className="h-7 w-auto md:h-8" />
       </a>
       <nav className="flex gap-4 md:gap-6">
         {page === 'home' ? (
