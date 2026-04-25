@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <img src="web/public/logo-termtap-concept-no-undertext.svg" alt="termtap logo" width="360" />
+  <img src="web/public/logo-termtap-concept-no-undertext-centered.svg" alt="termtap logo" width="360" />
 </p>
 <p align="center">Tap into your app's API traffic from the terminal.</p>
 
