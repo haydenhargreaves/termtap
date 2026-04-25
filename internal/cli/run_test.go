@@ -55,7 +55,7 @@ func TestDisplayHelpWritesToStderr(t *testing.T) {
 		displayHelp()
 	})
 
-	if !strings.Contains(stderr, "tap cert") || !strings.Contains(stderr, "tap run --") {
+	if !strings.Contains(stderr, "tap demo") || !strings.Contains(stderr, "tap cert") || !strings.Contains(stderr, "tap run --") {
 		t.Fatalf("stderr missing usage text: %q", stderr)
 	}
 }
@@ -80,6 +80,36 @@ func TestRun_RoutesCertCommand(t *testing.T) {
 
 	if !strings.Contains(stdout, "Certificate path:") {
 		t.Fatalf("stdout missing certificate path output: %q", stdout)
+	}
+}
+
+func TestRun_RoutesDemoCommand(t *testing.T) {
+	restore := installRunSeams(t)
+	defer restore()
+
+	called := installFatalSpy(t)
+	seen := 0
+	runTUIFn = func(ch <-chan model.Event, _ tui.Controls) error {
+		for i := 0; i < 3; i++ {
+			select {
+			case ev := <-ch:
+				seen++
+				if seen == 1 && ev.Type != model.EventTypeSessionStarted {
+					t.Fatalf("first demo event = %s, want %s", ev.Type, model.EventTypeSessionStarted)
+				}
+			default:
+				return nil
+			}
+		}
+		return nil
+	}
+
+	Run([]string{"tap", "demo"})
+	if *called {
+		t.Fatal("fatalExit should not be called for demo command")
+	}
+	if seen == 0 {
+		t.Fatal("expected demo event stream to be seeded")
 	}
 }
 

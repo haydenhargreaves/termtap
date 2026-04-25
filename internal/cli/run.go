@@ -39,6 +39,10 @@ func Run(args []string) {
 		runCert()
 		return
 	}
+	if len(args) >= 2 && args[1] == "demo" {
+		runDemo()
+		return
+	}
 
 	cmd, ok := parseCommand(args)
 	if !ok {
@@ -83,6 +87,7 @@ func parseCommand(args []string) (model.Command, bool) {
 func displayHelp() {
 	helpText := `
 usage:
+	tap demo
 	tap cert
 	tap run -- <command> [args...]
 `
