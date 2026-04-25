@@ -159,7 +159,7 @@ export function DocsPage() {
             <div className="space-y-3 text-sm leading-6">
               <p className="flex flex-col gap-1 md:flex-row md:gap-8">
                 <span className="w-28 text-emerald-400">--port</span>
-                <span className="text-slate-300">Proxy port (default 8888)</span>
+                <span className="text-slate-300">Proxy port (default 8080)</span>
               </p>
             </div>
           </DocsSection>

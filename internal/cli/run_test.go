@@ -22,18 +22,24 @@ func TestParseCommand(t *testing.T) {
 		ok       bool
 		nameWant string
 		argsWant []string
+		addrWant string
 	}{
 		{name: "too few args", args: []string{"tap"}, ok: false},
 		{name: "missing run token", args: []string{"tap", "oops", "--", "echo"}, ok: false},
 		{name: "missing separator", args: []string{"tap", "run", "echo"}, ok: false},
-		{name: "single command", args: []string{"tap", "run", "--", "echo"}, ok: true, nameWant: "echo", argsWant: []string{}},
-		{name: "command with args", args: []string{"tap", "run", "--", "curl", "-s", "https://example.com"}, ok: true, nameWant: "curl", argsWant: []string{"-s", "https://example.com"}},
+		{name: "single command", args: []string{"tap", "run", "--", "echo"}, ok: true, nameWant: "echo", argsWant: []string{}, addrWant: "127.0.0.1:8080"},
+		{name: "command with args", args: []string{"tap", "run", "--", "curl", "-s", "https://example.com"}, ok: true, nameWant: "curl", argsWant: []string{"-s", "https://example.com"}, addrWant: "127.0.0.1:8080"},
+		{name: "custom port", args: []string{"tap", "run", "--port", "9090", "--", "echo"}, ok: true, nameWant: "echo", argsWant: []string{}, addrWant: "127.0.0.1:9090"},
+		{name: "port missing value", args: []string{"tap", "run", "--port", "--", "echo"}, ok: false},
+		{name: "port invalid", args: []string{"tap", "run", "--port", "wat", "--", "echo"}, ok: false},
+		{name: "port out of range", args: []string{"tap", "run", "--port", "70000", "--", "echo"}, ok: false},
+		{name: "unknown flag", args: []string{"tap", "run", "--wat", "--", "echo"}, ok: false},
 	}
 
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			cmd, ok := parseCommand(tt.args)
+			cmd, addr, ok := parseCommand(tt.args)
 			if ok != tt.ok {
 				t.Fatalf("ok = %v, want %v", ok, tt.ok)
 			}
@@ -46,6 +52,9 @@ func TestParseCommand(t *testing.T) {
 			if strings.Join(cmd.Args, "|") != strings.Join(tt.argsWant, "|") {
 				t.Fatalf("cmd.Args = %#v, want %#v", cmd.Args, tt.argsWant)
 			}
+			if addr != tt.addrWant {
+				t.Fatalf("addr = %q, want %q", addr, tt.addrWant)
+			}
 		})
 	}
 }
@@ -55,7 +64,7 @@ func TestDisplayHelpWritesToStderr(t *testing.T) {
 		displayHelp()
 	})
 
-	if !strings.Contains(stderr, "tap demo") || !strings.Contains(stderr, "tap cert") || !strings.Contains(stderr, "tap run --") {
+	if !strings.Contains(stderr, "tap demo") || !strings.Contains(stderr, "tap cert") || !strings.Contains(stderr, "tap run [--port <port>] --") {
 		t.Fatalf("stderr missing usage text: %q", stderr)
 	}
 }
@@ -161,6 +170,25 @@ func TestRun_SuccessPathDoesNotCallFatal(t *testing.T) {
 	Run([]string{"tap", "run", "--", "echo"})
 	if *called {
 		t.Fatal("fatalExit should not be called on success path")
+	}
+}
+
+func TestRun_CustomPortPassedToSession(t *testing.T) {
+	restore := installRunSeams(t)
+	defer restore()
+
+	var gotAddr string
+	startSessionFn = func(_ model.Command, addr string) (*app.Session, error) {
+		gotAddr = addr
+		return &app.Session{Events: make(chan model.Event)}, nil
+	}
+	runTUIFn = func(<-chan model.Event, tui.Controls) error {
+		return nil
+	}
+
+	Run([]string{"tap", "run", "--port", "9091", "--", "echo"})
+	if gotAddr != "127.0.0.1:9091" {
+		t.Fatalf("session addr = %q, want %q", gotAddr, "127.0.0.1:9091")
 	}
 }
 

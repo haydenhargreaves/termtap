@@ -14,8 +14,7 @@ import (
 	"termtap.dev/internal/tui"
 )
 
-// This should be configurable at some point, just in case they build on 8080
-const proxy_addr = "127.0.0.1:8080"
+const defaultProxyPort = 8080
 
 var fatalExit = log.Fatalln
 var stdoutWriter io.Writer = stdioRef{isErr: false}
@@ -44,13 +43,13 @@ func Run(args []string) {
 		return
 	}
 
-	cmd, ok := parseCommand(args)
+	cmd, proxyAddr, ok := parseCommand(args)
 	if !ok {
 		displayHelp()
 		return
 	}
 
-	session, err := startSessionFn(cmd, proxy_addr)
+	session, err := startSessionFn(cmd, proxyAddr)
 	if err != nil {
 		fatalExit(err)
 		return
@@ -67,21 +66,50 @@ func Run(args []string) {
 	}
 }
 
-func parseCommand(args []string) (model.Command, bool) {
+func parseCommand(args []string) (model.Command, string, bool) {
 	if len(args) < 4 {
-		return model.Command{}, false
+		return model.Command{}, "", false
 	}
 
-	if args[1] != "run" || args[2] != "--" {
-		return model.Command{}, false
+	if args[1] != "run" {
+		return model.Command{}, "", false
 	}
 
-	args = args[3:]
-	if len(args) == 1 {
-		return model.Command{Name: args[0], Args: []string{}}, true
+	port := defaultProxyPort
+	idx := 2
+	for idx < len(args) && args[idx] != "--" {
+		if args[idx] != "--port" {
+			return model.Command{}, "", false
+		}
+
+		if idx+1 >= len(args) {
+			return model.Command{}, "", false
+		}
+
+		p, err := strconv.Atoi(args[idx+1])
+		if err != nil || p <= 0 || p > 65535 {
+			return model.Command{}, "", false
+		}
+
+		port = p
+		idx += 2
 	}
 
-	return model.Command{Name: args[0], Args: args[1:]}, true
+	if idx >= len(args) || args[idx] != "--" {
+		return model.Command{}, "", false
+	}
+
+	if idx+1 >= len(args) {
+		return model.Command{}, "", false
+	}
+
+	cmdArgs := args[idx+1:]
+	cmd := model.Command{Name: cmdArgs[0], Args: cmdArgs[1:]}
+	return cmd, proxyAddrForPort(port), true
+}
+
+func proxyAddrForPort(port int) string {
+	return fmt.Sprintf("127.0.0.1:%d", port)
 }
 
 func displayHelp() {
@@ -89,7 +117,7 @@ func displayHelp() {
 usage:
 	tap demo
 	tap cert
-	tap run -- <command> [args...]
+	tap run [--port <port>] -- <command> [args...]
 `
 
 	fmt.Fprintln(stderrWriter, helpText)
@@ -137,5 +165,5 @@ func runCert() {
 	fmt.Fprintf(stdoutWriter, "  sudo trust anchor %s\n", quotedCertPath)
 	fmt.Fprintln(stdoutWriter)
 	fmt.Fprintln(stdoutWriter, "Quick curl test:")
-	fmt.Fprintf(stdoutWriter, "  curl --proxy http://%s --cacert %s https://example.com\n", proxy_addr, quotedCertPath)
+	fmt.Fprintf(stdoutWriter, "  curl --proxy http://%s --cacert %s https://example.com\n", proxyAddrForPort(defaultProxyPort), quotedCertPath)
 }
