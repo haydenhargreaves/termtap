@@ -7,6 +7,7 @@ const contents = [
   { id: 'usage', label: 'usage' },
   { id: 'examples', label: 'examples' },
   { id: 'https-certs', label: 'https & certs' },
+  { id: 'keymaps', label: 'keymaps' },
   { id: 'privacy', label: 'privacy' },
 ]
 
@@ -209,7 +210,90 @@ export function DocsPage() {
             </div>
           </DocsSection>
 
-          <DocsSection id="privacy" number="06" title="Privacy">
+          <DocsSection id="keymaps" number="06" title="Keymaps">
+            <p>
+              Termtap&apos;s terminal UI supports keyboard-first navigation. Use the shortcuts below to move around
+              quickly while requests stream in.
+            </p>
+            <div className="overflow-x-auto rounded-md border border-slate-800 bg-slate-900">
+              <table className="w-full min-w-[36rem] text-sm text-slate-300">
+                <thead className="border-b border-slate-800 text-xs uppercase tracking-widest text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-medium">Key</th>
+                    <th className="px-4 py-3 text-left font-medium">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-slate-800/60">
+                    <td className="px-4 py-3 font-mono text-emerald-400">q</td>
+                    <td className="px-4 py-3">Quit Termtap</td>
+                  </tr>
+                  <tr className="border-b border-slate-800/60">
+                    <td className="px-4 py-3 font-mono text-emerald-400">ctrl+c</td>
+                    <td className="px-4 py-3">Quit Termtap</td>
+                  </tr>
+                  <tr className="border-b border-slate-800/60">
+                    <td className="px-4 py-3 font-mono text-emerald-400">j / down</td>
+                    <td className="px-4 py-3">Move down in the focused pane</td>
+                  </tr>
+                  <tr className="border-b border-slate-800/60">
+                    <td className="px-4 py-3 font-mono text-emerald-400">k / up</td>
+                    <td className="px-4 py-3">Move up in the focused pane</td>
+                  </tr>
+                  <tr className="border-b border-slate-800/60">
+                    <td className="px-4 py-3 font-mono text-emerald-400">tab</td>
+                    <td className="px-4 py-3">Next details tab</td>
+                  </tr>
+                  <tr className="border-b border-slate-800/60">
+                    <td className="px-4 py-3 font-mono text-emerald-400">shift+tab</td>
+                    <td className="px-4 py-3">Previous details tab</td>
+                  </tr>
+                  <tr className="border-b border-slate-800/60">
+                    <td className="px-4 py-3 font-mono text-emerald-400">1</td>
+                    <td className="px-4 py-3">Focus Requests pane</td>
+                  </tr>
+                  <tr className="border-b border-slate-800/60">
+                    <td className="px-4 py-3 font-mono text-emerald-400">2</td>
+                    <td className="px-4 py-3">Focus Details pane</td>
+                  </tr>
+                  <tr className="border-b border-slate-800/60">
+                    <td className="px-4 py-3 font-mono text-emerald-400">3</td>
+                    <td className="px-4 py-3">Focus Events pane (when visible)</td>
+                  </tr>
+                  <tr className="border-b border-slate-800/60">
+                    <td className="px-4 py-3 font-mono text-emerald-400">4</td>
+                    <td className="px-4 py-3">Focus Stdout pane (when visible)</td>
+                  </tr>
+                  <tr className="border-b border-slate-800/60">
+                    <td className="px-4 py-3 font-mono text-emerald-400">e</td>
+                    <td className="px-4 py-3">Toggle Events pane</td>
+                  </tr>
+                  <tr className="border-b border-slate-800/60">
+                    <td className="px-4 py-3 font-mono text-emerald-400">o</td>
+                    <td className="px-4 py-3">Toggle Stdout pane</td>
+                  </tr>
+                  <tr className="border-b border-slate-800/60">
+                    <td className="px-4 py-3 font-mono text-emerald-400">/</td>
+                    <td className="px-4 py-3">Open the search prompt</td>
+                  </tr>
+                  <tr className="border-b border-slate-800/60">
+                    <td className="px-4 py-3 font-mono text-emerald-400">esc</td>
+                    <td className="px-4 py-3">Close the search prompt</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-3 font-mono text-emerald-400">ctrl+r</td>
+                    <td className="px-4 py-3">Restart the wrapped process</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="text-sm text-slate-500">
+              Tip: <span className="text-slate-300">e</span> and <span className="text-slate-300">o</span> are
+              useful when you want more vertical space for the request and details panes.
+            </p>
+          </DocsSection>
+
+          <DocsSection id="privacy" number="07" title="Privacy">
             <p>Termtap is a local-only tool. It does not phone home, collect telemetry, or send any data anywhere.</p>
             <ul className="space-y-3">
               <li>
