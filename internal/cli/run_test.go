@@ -206,6 +206,8 @@ func TestRunCert_EnsureCAFailureCallsFatalExit(t *testing.T) {
 func TestRunCertOutputContract(t *testing.T) {
 	configRoot := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", configRoot)
+	origGOOS := currentGOOS
+	t.Cleanup(func() { currentGOOS = origGOOS })
 
 	stdout, _ := captureOutput(t, func() {
 		runCert()
@@ -225,6 +227,41 @@ func TestRunCertOutputContract(t *testing.T) {
 		if !strings.Contains(stdout, "Trust instructions (Linux):") {
 			t.Fatalf("stdout missing linux trust instructions: %q", stdout)
 		}
+	}
+}
+
+func TestRunCert_WindowsHint(t *testing.T) {
+	configRoot := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", configRoot)
+	origGOOS := currentGOOS
+	t.Cleanup(func() { currentGOOS = origGOOS })
+	currentGOOS = "windows"
+
+	stdout, _ := captureOutput(t, func() {
+		runCert()
+	})
+
+	if !strings.Contains(stdout, "Windows Trusted Root Certification Authorities") {
+		t.Fatalf("stdout missing windows trust hint: %q", stdout)
+	}
+	if !strings.Contains(stdout, "--ssl-no-revoke") {
+		t.Fatalf("stdout missing windows curl hint: %q", stdout)
+	}
+}
+
+func TestRunCert_DarwinHint(t *testing.T) {
+	configRoot := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", configRoot)
+	origGOOS := currentGOOS
+	t.Cleanup(func() { currentGOOS = origGOOS })
+	currentGOOS = "darwin"
+
+	stdout, _ := captureOutput(t, func() {
+		runCert()
+	})
+
+	if !strings.Contains(stdout, "Keychain Access") {
+		t.Fatalf("stdout missing macOS trust hint: %q", stdout)
 	}
 }
 

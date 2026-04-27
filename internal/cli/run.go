@@ -21,6 +21,7 @@ var stdoutWriter io.Writer = stdioRef{isErr: false}
 var stderrWriter io.Writer = stdioRef{isErr: true}
 var startSessionFn = app.StartSession
 var runTUIFn = tui.Run
+var currentGOOS = runtime.GOOS
 
 type stdioRef struct {
 	isErr bool
@@ -131,7 +132,6 @@ func runCert() {
 	}
 
 	certPath := ca.CertPath()
-	quotedCertPath := strconv.Quote(certPath)
 	fmt.Fprintf(stdoutWriter, "Certificate path: %s\n", certPath)
 	if ca.WasCreated() {
 		fmt.Fprintln(stdoutWriter, "Created a new local HTTPS interception CA.")
@@ -148,22 +148,33 @@ func runCert() {
 		fmt.Fprintln(stdoutWriter, "System trust store: not trusted")
 	}
 
-	if runtime.GOOS != "linux" {
-		fmt.Fprintln(stdoutWriter, "Install this certificate into your OS or client trust store to inspect HTTPS traffic.")
-		return
-	}
+	printTrustInstructions(certPath)
+}
 
-	fmt.Fprintln(stdoutWriter)
-	fmt.Fprintln(stdoutWriter, "Trust instructions (Linux):")
-	fmt.Fprintln(stdoutWriter, "Debian/Ubuntu:")
-	fmt.Fprintf(stdoutWriter, "  sudo cp %s /usr/local/share/ca-certificates/termtap.crt\n", quotedCertPath)
-	fmt.Fprintln(stdoutWriter, "  sudo update-ca-certificates")
-	fmt.Fprintln(stdoutWriter, "Fedora/RHEL/CentOS:")
-	fmt.Fprintf(stdoutWriter, "  sudo cp %s /etc/pki/ca-trust/source/anchors/termtap.crt\n", quotedCertPath)
-	fmt.Fprintln(stdoutWriter, "  sudo update-ca-trust")
-	fmt.Fprintln(stdoutWriter, "Arch:")
-	fmt.Fprintf(stdoutWriter, "  sudo trust anchor %s\n", quotedCertPath)
-	fmt.Fprintln(stdoutWriter)
-	fmt.Fprintln(stdoutWriter, "Quick curl test:")
-	fmt.Fprintf(stdoutWriter, "  curl --proxy http://%s --cacert %s https://example.com\n", proxyAddrForPort(defaultProxyPort), quotedCertPath)
+func printTrustInstructions(certPath string) {
+	quotedCertPath := strconv.Quote(certPath)
+
+	switch currentGOOS {
+	case "windows":
+		fmt.Fprintln(stdoutWriter, "Install this certificate into Windows Trusted Root Certification Authorities.")
+		fmt.Fprintln(stdoutWriter, "If curl reports Schannel revocation errors, try: curl --ssl-no-revoke --cacert "+quotedCertPath+" https://example.com")
+	case "darwin":
+		fmt.Fprintln(stdoutWriter, "Import this certificate into Keychain Access and set it to always trust.")
+		fmt.Fprintf(stdoutWriter, "Quick curl test: curl --proxy http://%s --cacert %s https://example.com\n", proxyAddrForPort(defaultProxyPort), quotedCertPath)
+	case "linux":
+		fmt.Fprintln(stdoutWriter, "Trust instructions (Linux):")
+		fmt.Fprintln(stdoutWriter, "Debian/Ubuntu:")
+		fmt.Fprintf(stdoutWriter, "  sudo cp %s /usr/local/share/ca-certificates/termtap.crt\n", quotedCertPath)
+		fmt.Fprintln(stdoutWriter, "  sudo update-ca-certificates")
+		fmt.Fprintln(stdoutWriter, "Fedora/RHEL/CentOS:")
+		fmt.Fprintf(stdoutWriter, "  sudo cp %s /etc/pki/ca-trust/source/anchors/termtap.crt\n", quotedCertPath)
+		fmt.Fprintln(stdoutWriter, "  sudo update-ca-trust")
+		fmt.Fprintln(stdoutWriter, "Arch:")
+		fmt.Fprintf(stdoutWriter, "  sudo trust anchor %s\n", quotedCertPath)
+		fmt.Fprintln(stdoutWriter)
+		fmt.Fprintln(stdoutWriter, "Quick curl test:")
+		fmt.Fprintf(stdoutWriter, "  curl --proxy http://%s --cacert %s https://example.com\n", proxyAddrForPort(defaultProxyPort), quotedCertPath)
+	default:
+		fmt.Fprintln(stdoutWriter, "Install this certificate into your OS or client trust store to inspect HTTPS traffic.")
+	}
 }
