@@ -5,8 +5,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/google/uuid"
 	"termtap.dev/internal/model"
 )
 
@@ -133,9 +135,7 @@ func (m *Model) createRequest(req model.Request) {
 		return
 	}
 
-	if len(m.requests) > 0 && m.requestCursor > 0 {
-		m.requestCursor++
-	}
+	selectedReq, hadSelectedReq := m.selectedRequest()
 
 	m.requests = append(m.requests, req)
 
@@ -143,6 +143,12 @@ func (m *Model) createRequest(req model.Request) {
 	// Maybe we should notify the user?
 	if len(m.requests) > maxRequests {
 		m.requests = m.requests[1:]
+	}
+
+	if hadSelectedReq {
+		if cursor, ok := m.cursorForRequestID(selectedReq.ID); ok {
+			m.requestCursor = cursor
+		}
 	}
 
 	m.clampRequestCursor()
@@ -230,7 +236,8 @@ func (m *Model) handleSearchKey(msg tea.KeyMsg) bool {
 		return true
 	case tea.KeyBackspace, tea.KeyCtrlH:
 		if len(m.searchQuery) > 0 {
-			m.searchQuery = m.searchQuery[:len(m.searchQuery)-1]
+			_, size := utf8.DecodeLastRuneInString(m.searchQuery)
+			m.searchQuery = m.searchQuery[:len(m.searchQuery)-size]
 		}
 		m.requestCursor = 0
 		m.requestScroll = 0
@@ -275,6 +282,17 @@ func (m Model) filteredRequestIndices() []int {
 	return indices
 }
 
+func (m Model) cursorForRequestID(id uuid.UUID) (int, bool) {
+	visible := m.filteredRequestIndices()
+	for row := len(visible) - 1; row >= 0; row-- {
+		if m.requests[visible[row]].ID == id {
+			return len(visible) - 1 - row, true
+		}
+	}
+
+	return 0, false
+}
+
 type requestSearchQuery struct {
 	terms      []string
 	methods    []string
@@ -288,12 +306,41 @@ func parseRequestSearchQuery(input string) requestSearchQuery {
 		statusHuns: make(map[int]struct{}),
 	}
 
-	for _, token := range strings.Fields(strings.ToLower(strings.TrimSpace(input))) {
+	tokens := strings.Fields(strings.ToLower(strings.TrimSpace(input)))
+	for i := 0; i < len(tokens); i++ {
+		token := tokens[i]
+
+		if token == "method:" {
+			if i+1 < len(tokens) && tokens[i+1] != "" {
+				q.methods = append(q.methods, tokens[i+1])
+				i++
+				continue
+			}
+			q.terms = append(q.terms, token)
+			continue
+		}
+
 		if value, ok := strings.CutPrefix(token, "method:"); ok {
 			if value != "" {
 				q.methods = append(q.methods, value)
 				continue
 			}
+		}
+
+		if token == "status:" {
+			if i+1 < len(tokens) {
+				if status, ok := parseStatusToken(tokens[i+1]); ok {
+					if status >= 1000 {
+						q.statusHuns[status/1000] = struct{}{}
+					} else {
+						q.statuses[status] = struct{}{}
+					}
+					i++
+					continue
+				}
+			}
+			q.terms = append(q.terms, token)
+			continue
 		}
 
 		if value, ok := strings.CutPrefix(token, "status:"); ok {

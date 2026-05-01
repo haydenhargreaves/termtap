@@ -88,6 +88,14 @@ func TestParseRequestSearchQuery_Table(t *testing.T) {
 			wantStatuses: nil,
 			wantClasses:  nil,
 		},
+		{
+			name:         "supports spaced method and status filters",
+			input:        "method: get status: 5xx",
+			wantTerms:    nil,
+			wantMethods:  []string{"get"},
+			wantStatuses: nil,
+			wantClasses:  []int{5},
+		},
 	}
 
 	for _, tt := range tests {
@@ -231,6 +239,104 @@ func TestSearchEscClearsAndResetsSelectionState(t *testing.T) {
 	}
 	if got.requestCursor != 0 || got.requestScroll != 0 || got.detailsScroll != 0 {
 		t.Fatalf("scroll/cursor not reset: cursor=%d reqScroll=%d detScroll=%d", got.requestCursor, got.requestScroll, got.detailsScroll)
+	}
+}
+
+func TestSearchBackspaceHandlesUnicodeRune(t *testing.T) {
+	t.Parallel()
+
+	m := NewModel(make(chan model.Event), Controls{})
+	m.showSearch = true
+	m.searchQuery = "a\u00e9"
+
+	next, _ := m.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+	got := next.(Model)
+	if got.searchQuery != "a" {
+		t.Fatalf("searchQuery after unicode backspace = %q, want %q", got.searchQuery, "a")
+	}
+}
+
+func TestCreateRequestKeepsSelectionInFilteredView(t *testing.T) {
+	t.Parallel()
+
+	selectedID := uuid.New()
+	m := NewModel(make(chan model.Event), Controls{})
+	m.requests = []model.Request{
+		{ID: uuid.New(), Method: "GET", Host: "api", URL: "/ok", Status: 200},
+		{ID: selectedID, Method: "GET", Host: "api", URL: "/err", Status: 500},
+	}
+	m.searchQuery = "status:5xx"
+	m.requestCursor = 0
+
+	before, ok := m.selectedRequest()
+	if !ok || before.ID != selectedID {
+		t.Fatal("expected selected filtered request before createRequest")
+	}
+
+	m.createRequest(model.Request{ID: uuid.New(), Method: "GET", Host: "api", URL: "/new-ok", Status: 201})
+	after, ok := m.selectedRequest()
+	if !ok || after.ID != selectedID {
+		t.Fatal("selection should stay on same request when new request does not match filter")
+	}
+	if m.requestCursor != 0 {
+		t.Fatalf("requestCursor = %d, want 0 with single visible row", m.requestCursor)
+	}
+
+	m.createRequest(model.Request{ID: uuid.New(), Method: "GET", Host: "api", URL: "/new-err", Status: 502})
+	afterMatch, ok := m.selectedRequest()
+	if !ok || afterMatch.ID != selectedID {
+		t.Fatal("selection should stay on same request when matching request arrives")
+	}
+	if m.requestCursor != 1 {
+		t.Fatalf("requestCursor = %d, want 1 to keep selected row anchored", m.requestCursor)
+	}
+}
+
+func TestCreateRequestWhenSelectedEntryEvictedByTrim(t *testing.T) {
+	t.Parallel()
+
+	m := NewModel(make(chan model.Event), Controls{})
+	m.searchQuery = "status:5xx"
+
+	for i := 0; i < maxRequests; i++ {
+		status := 200
+		if i%2 == 0 {
+			status = 500
+		}
+		m.requests = append(m.requests, model.Request{
+			ID:     uuid.New(),
+			Method: "GET",
+			Host:   "api",
+			URL:    "/r",
+			Status: status,
+		})
+	}
+
+	visible := m.filteredRequestIndices()
+	if len(visible) == 0 {
+		t.Fatal("expected non-empty visible filtered set")
+	}
+
+	// Pick the oldest visible row so it gets evicted first.
+	m.requestCursor = len(visible) - 1
+	selectedBefore, ok := m.selectedRequest()
+	if !ok {
+		t.Fatal("expected selected request before trim")
+	}
+
+	for {
+		m.createRequest(model.Request{ID: uuid.New(), Method: "GET", Host: "api", URL: "/new", Status: 201})
+		selectedAfter, ok := m.selectedRequest()
+		if !ok {
+			t.Fatal("expected selection after trim")
+		}
+		if selectedAfter.ID != selectedBefore.ID {
+			break
+		}
+	}
+
+	if m.requestCursor < 0 || m.requestCursor >= m.visibleRequestCount() {
+		t.Fatalf("requestCursor out of bounds after eviction: %d of %d", m.requestCursor, m.visibleRequestCount())
 	}
 }
 
