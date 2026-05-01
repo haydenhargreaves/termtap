@@ -8,6 +8,7 @@ const contents = [
   { id: 'examples', label: 'examples' },
   { id: 'https-certs', label: 'https & certs' },
   { id: 'keymaps', label: 'keymaps' },
+  { id: 'search', label: 'search' },
   { id: 'privacy', label: 'privacy' },
 ]
 
@@ -298,7 +299,52 @@ export function DocsPage() {
             </p>
           </DocsSection>
 
-          <DocsSection id="privacy" number="07" title="Privacy">
+          <DocsSection id="search" number="07" title="Search">
+            <p>
+              Press <code className="px-0 text-slate-200">/</code> to open search. Filtering is live as you type and
+              applies to the Requests pane.
+            </p>
+            <p className="text-slate-500">Search supports free text and simple field filters.</p>
+
+            <div className="overflow-x-auto rounded-md border border-slate-800 bg-slate-900">
+              <table className="w-full min-w-[32rem] text-sm text-slate-300">
+                <thead className="border-b border-slate-800 text-xs uppercase tracking-widest text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-medium">Pattern</th>
+                    <th className="px-4 py-3 text-left font-medium">Meaning</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-slate-800/60">
+                    <td className="px-4 py-3 font-mono text-emerald-400">users api.example.com</td>
+                    <td className="px-4 py-3">Free text; matches host and URL path (AND between terms)</td>
+                  </tr>
+                  <tr className="border-b border-slate-800/60">
+                    <td className="px-4 py-3 font-mono text-emerald-400">method:get</td>
+                    <td className="px-4 py-3">Method equals GET (case-insensitive)</td>
+                  </tr>
+                  <tr className="border-b border-slate-800/60">
+                    <td className="px-4 py-3 font-mono text-emerald-400">status:404</td>
+                    <td className="px-4 py-3">Exact response status code</td>
+                  </tr>
+                  <tr className="border-b border-slate-800/60">
+                    <td className="px-4 py-3 font-mono text-emerald-400">status:5xx</td>
+                    <td className="px-4 py-3">Status class match (1xx-5xx)</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-3 font-mono text-emerald-400">method: get status: 5xx login</td>
+                    <td className="px-4 py-3">Mixed filters + terms, including spaced filter syntax</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <p className="text-sm text-slate-500">
+              Tip: press <span className="text-slate-300">esc</span> to close search and clear the active query.
+            </p>
+          </DocsSection>
+
+          <DocsSection id="privacy" number="08" title="Privacy">
             <p>Termtap is a local-only tool. It does not phone home, collect telemetry, or send any data anywhere.</p>
             <ul className="space-y-3">
               <li>
