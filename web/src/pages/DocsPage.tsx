@@ -207,6 +207,11 @@ export function DocsPage() {
                 Trusting the CA only lets the app accept Termtap&apos;s certificate. Traffic still has to flow through
                 the proxy for Termtap to see it.
               </p>
+              <p className="mt-2 text-slate-500">
+                On some Windows setups, trust propagation can be inconsistent. If HTTPS requests fail with cert errors,
+                test with <code className="px-0 text-slate-200">curl -k</code> first to confirm proxying works,
+                then finish trusting the CA from <code className="px-0 text-slate-200">tap cert</code>.
+              </p>
             </div>
           </DocsSection>
 
