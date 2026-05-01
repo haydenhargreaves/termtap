@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/google/uuid"
 	"termtap.dev/internal/model"
 )
@@ -184,8 +185,8 @@ func TestPaneRenderersAndStatusBar(t *testing.T) {
 		t.Fatalf("search pane len = %d, want 3", len(search))
 	}
 	for i, line := range search {
-		if len(line) != 20 {
-			t.Fatalf("search pane line %d len = %d, want %d", i, len(line), 20)
+		if lipgloss.Width(line) != 20 {
+			t.Fatalf("search pane line %d width = %d, want %d", i, lipgloss.Width(line), 20)
 		}
 	}
 
@@ -214,6 +215,42 @@ func TestPaneRenderersAndStatusBar(t *testing.T) {
 	joined := strings.Join(std, "\n")
 	if !strings.Contains(joined, "out") || !strings.Contains(joined, "err") {
 		t.Fatal("std pane should include stdout/stderr logs")
+	}
+}
+
+func TestRequestSearchFiltering(t *testing.T) {
+	t.Parallel()
+
+	m := NewModel(make(chan model.Event), Controls{})
+	m.requests = []model.Request{
+		{ID: uuid.New(), Method: "GET", Host: "api.example.com", URL: "/v1/users", Status: 200},
+		{ID: uuid.New(), Method: "POST", Host: "api.example.com", URL: "/v1/login", Status: 401},
+		{ID: uuid.New(), Method: "GET", Host: "cdn.example.com", URL: "/asset.js", Status: 304},
+		{ID: uuid.New(), Method: "DELETE", Host: "api.example.com", URL: "/v1/users/42", Status: 500},
+	}
+
+	m.searchQuery = "api.example.com method:get status:2xx"
+	idx := m.filteredRequestIndices()
+	if len(idx) != 1 {
+		t.Fatalf("filteredRequestIndices len = %d, want 1", len(idx))
+	}
+	if got := m.requests[idx[0]].URL; got != "/v1/users" {
+		t.Fatalf("filtered request URL = %q, want %q", got, "/v1/users")
+	}
+
+	m.searchQuery = "status:5xx method:delete"
+	idx = m.filteredRequestIndices()
+	if len(idx) != 1 {
+		t.Fatalf("filteredRequestIndices len = %d, want 1", len(idx))
+	}
+	if got := m.requests[idx[0]].Status; got != 500 {
+		t.Fatalf("filtered request status = %d, want 500", got)
+	}
+
+	m.searchQuery = "status:404"
+	idx = m.filteredRequestIndices()
+	if len(idx) != 0 {
+		t.Fatalf("filteredRequestIndices len = %d, want 0", len(idx))
 	}
 }
 

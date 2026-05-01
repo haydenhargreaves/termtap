@@ -130,7 +130,7 @@ func (m Model) bottomStatusRight() string {
 }
 
 func (m Model) requestSelectionStats() (selected int, total int) {
-	total = len(m.requests)
+	total = m.visibleRequestCount()
 	if total == 0 {
 		return 0, 0
 	}
@@ -139,11 +139,27 @@ func (m Model) requestSelectionStats() (selected int, total int) {
 	return selected, total
 }
 
-// TODO: Implement
 func (m Model) renderSearchPane(w, h int) []string {
+	if h <= 0 {
+		return nil
+	}
+
+	left := m.theme.TextMuted.Render(" / SEARCH ")
+	hint := m.theme.TextMuted.Render(" host/path method:get status:5xx ")
+	if strings.TrimSpace(m.searchQuery) != "" {
+		hint = m.theme.Text.Render(" " + m.searchQuery + " ")
+	}
+
+	line := left + hint
+	line = clampRendered(line, w)
+	if lipgloss.Width(line) < w {
+		line += m.theme.Text.Render(strings.Repeat(" ", w-lipgloss.Width(line)))
+	}
+
 	lines := make([]string, h)
-	for y := range lines {
-		lines[y] = strings.Repeat(" ", w)
+	lines[0] = line
+	for y := 1; y < h; y++ {
+		lines[y] = m.theme.Text.Render(strings.Repeat(" ", w))
 	}
 	return lines
 }
@@ -165,9 +181,10 @@ func (m Model) renderRequestPane(w, h int) []string {
 	header := m.theme.TextMuted.Render(headerLeft + headerSpace + headerRight)
 	lines = append(lines, header)
 
-	bodyLines := make([]string, 0, len(m.requests))
-	for i, row := len(m.requests)-1, 0; i >= 0; i, row = i-1, row+1 {
-		req := m.requests[i]
+	visible := m.filteredRequestIndices()
+	bodyLines := make([]string, 0, len(visible))
+	for i, row := len(visible)-1, 0; i >= 0; i, row = i-1, row+1 {
+		req := m.requests[visible[i]]
 		duration := req.Duration
 		if req.Pending && !req.StartTime.IsZero() {
 			duration = time.Since(req.StartTime)
@@ -532,7 +549,8 @@ func (m Model) detailsContentLineCount(w int) int {
 }
 
 func (m Model) selectedRequest() (model.Request, bool) {
-	if len(m.requests) == 0 {
+	visible := m.filteredRequestIndices()
+	if len(visible) == 0 {
 		return model.Request{}, false
 	}
 
@@ -540,16 +558,16 @@ func (m Model) selectedRequest() (model.Request, bool) {
 	if cursor < 0 {
 		cursor = 0
 	}
-	if cursor >= len(m.requests) {
-		cursor = len(m.requests) - 1
+	if cursor >= len(visible) {
+		cursor = len(visible) - 1
 	}
 
-	idx := len(m.requests) - cursor - 1
-	if idx < 0 || idx >= len(m.requests) {
+	idx := len(visible) - cursor - 1
+	if idx < 0 || idx >= len(visible) {
 		return model.Request{}, false
 	}
 
-	return m.requests[idx], true
+	return m.requests[visible[idx]], true
 }
 
 func formatBodyLines(body []byte, width int) []string {

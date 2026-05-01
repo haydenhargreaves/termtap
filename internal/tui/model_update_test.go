@@ -29,6 +29,9 @@ func TestNewModelDefaults(t *testing.T) {
 	if m.showEvents || m.showStd || m.showSearch || m.restarting {
 		t.Fatal("toggle flags should initialize false")
 	}
+	if m.searchQuery != "" {
+		t.Fatal("search query should initialize empty")
+	}
 }
 
 func TestInitBatchesEventAndTick(t *testing.T) {
@@ -188,9 +191,32 @@ func TestUpdate(t *testing.T) {
 			t.Fatal("/ should enable search")
 		}
 
-		next5, _ := next4.(Model).Update(tea.KeyMsg{Type: tea.KeyEsc})
+		nextSearch, _ := next4.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("x")})
+		if nextSearch.(Model).searchQuery != "x" {
+			t.Fatal("typed rune should update search query")
+		}
+
+		nextSearchSpace, _ := nextSearch.(Model).Update(tea.KeyMsg{Type: tea.KeySpace})
+		if nextSearchSpace.(Model).searchQuery != "x " {
+			t.Fatal("space should update search query")
+		}
+
+		nextSearch2, _ := nextSearchSpace.(Model).Update(tea.KeyMsg{Type: tea.KeyBackspace})
+		if nextSearch2.(Model).searchQuery != "x" {
+			t.Fatal("backspace should remove one character")
+		}
+
+		nextSearch3, _ := nextSearch2.(Model).Update(tea.KeyMsg{Type: tea.KeyBackspace})
+		if nextSearch3.(Model).searchQuery != "" {
+			t.Fatal("backspace should update search query")
+		}
+
+		next5, _ := nextSearch3.(Model).Update(tea.KeyMsg{Type: tea.KeyEsc})
 		if next5.(Model).showSearch {
 			t.Fatal("esc should disable search")
+		}
+		if next5.(Model).searchQuery != "" {
+			t.Fatal("esc should clear search query")
 		}
 
 		next6, cmd6 := next5.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("x")})
@@ -310,7 +336,7 @@ func TestModelHelpers(t *testing.T) {
 	t.Run("pushEvent trims to maxEvents", func(t *testing.T) {
 		t.Parallel()
 		m := NewModel(make(chan model.Event), Controls{})
-		for i := 0; i < maxEvents+5; i++ {
+		for range maxEvents + 5 {
 			m.pushEvent(model.Event{Body: "x"})
 		}
 		if len(m.events) != maxEvents {
@@ -326,7 +352,7 @@ func TestModelHelpers(t *testing.T) {
 			t.Fatal("CONNECT request should be ignored")
 		}
 
-		for i := 0; i < maxRequests+3; i++ {
+		for range maxRequests + 3 {
 			m.createRequest(model.Request{ID: uuid.New(), Method: http.MethodGet})
 		}
 		if len(m.requests) != maxRequests {

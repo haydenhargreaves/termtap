@@ -38,11 +38,12 @@ type Model struct {
 	width  int
 	height int
 
-	theme      Theme
-	showEvents bool
-	showStd    bool
-	showSearch bool
-	restarting bool
+	theme       Theme
+	showEvents  bool
+	showStd     bool
+	showSearch  bool
+	searchQuery string
+	restarting  bool
 
 	now time.Time
 }
@@ -69,6 +70,7 @@ func NewModel(ch <-chan model.Event, controls Controls) Model {
 		showEvents:    false,
 		showStd:       false,
 		showSearch:    false,
+		searchQuery:   "",
 		restarting:    false,
 		theme:         newTheme(),
 	}

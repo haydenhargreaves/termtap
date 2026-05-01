@@ -2,6 +2,8 @@ package tui
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -25,6 +27,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// TODO: Abstract the keymaps
 	case tea.KeyMsg:
+		if m.showSearch {
+			if m.handleSearchKey(msg) {
+				m.clampPaneScrolls()
+				return m, nil
+			}
+		}
+
 		switch msg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
@@ -66,6 +75,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.clampPaneScrolls()
 		case "esc":
 			m.showSearch = false
+			m.searchQuery = ""
 			m.clampPaneScrolls()
 		}
 		return m, nil
@@ -163,7 +173,8 @@ func (m *Model) moveRequestCursor(delta int) {
 }
 
 func (m *Model) clampRequestCursor() {
-	if len(m.requests) == 0 {
+	total := m.visibleRequestCount()
+	if total == 0 {
 		m.requestCursor = 0
 		m.requestScroll = 0
 		return
@@ -173,8 +184,8 @@ func (m *Model) clampRequestCursor() {
 		m.requestCursor = 0
 	}
 
-	if m.requestCursor >= len(m.requests) {
-		m.requestCursor = len(m.requests) - 1
+	if m.requestCursor >= total {
+		m.requestCursor = total - 1
 	}
 }
 
@@ -185,7 +196,7 @@ func (m *Model) ensureRequestCursorVisible() {
 		return
 	}
 
-	maxScroll := max(0, len(m.requests)-viewHeight)
+	maxScroll := max(0, m.visibleRequestCount()-viewHeight)
 	if m.requestScroll < 0 {
 		m.requestScroll = 0
 	}
@@ -206,6 +217,154 @@ func (m *Model) ensureRequestCursorVisible() {
 	if m.requestScroll > maxScroll {
 		m.requestScroll = maxScroll
 	}
+}
+
+func (m *Model) handleSearchKey(msg tea.KeyMsg) bool {
+	switch msg.Type {
+	case tea.KeyEsc:
+		m.showSearch = false
+		m.searchQuery = ""
+		m.requestCursor = 0
+		m.requestScroll = 0
+		m.detailsScroll = 0
+		return true
+	case tea.KeyBackspace, tea.KeyCtrlH:
+		if len(m.searchQuery) > 0 {
+			m.searchQuery = m.searchQuery[:len(m.searchQuery)-1]
+		}
+		m.requestCursor = 0
+		m.requestScroll = 0
+		m.detailsScroll = 0
+		return true
+	case tea.KeyRunes:
+		if len(msg.Runes) == 0 {
+			return false
+		}
+		m.searchQuery += string(msg.Runes)
+		m.requestCursor = 0
+		m.requestScroll = 0
+		m.detailsScroll = 0
+		return true
+	case tea.KeySpace:
+		m.searchQuery += " "
+		m.requestCursor = 0
+		m.requestScroll = 0
+		m.detailsScroll = 0
+		return true
+	case tea.KeyEnter:
+		return true
+	default:
+		return false
+	}
+}
+
+func (m Model) visibleRequestCount() int {
+	return len(m.filteredRequestIndices())
+}
+
+func (m Model) filteredRequestIndices() []int {
+	indices := make([]int, 0, len(m.requests))
+	query := parseRequestSearchQuery(m.searchQuery)
+
+	for i := range m.requests {
+		if requestMatchesQuery(m.requests[i], query) {
+			indices = append(indices, i)
+		}
+	}
+
+	return indices
+}
+
+type requestSearchQuery struct {
+	terms      []string
+	methods    []string
+	statuses   map[int]struct{}
+	statusHuns map[int]struct{}
+}
+
+func parseRequestSearchQuery(input string) requestSearchQuery {
+	q := requestSearchQuery{
+		statuses:   make(map[int]struct{}),
+		statusHuns: make(map[int]struct{}),
+	}
+
+	for _, token := range strings.Fields(strings.ToLower(strings.TrimSpace(input))) {
+		if value, ok := strings.CutPrefix(token, "method:"); ok {
+			if value != "" {
+				q.methods = append(q.methods, value)
+				continue
+			}
+		}
+
+		if value, ok := strings.CutPrefix(token, "status:"); ok {
+			if status, ok := parseStatusToken(value); ok {
+				if status >= 1000 {
+					q.statusHuns[status/1000] = struct{}{}
+				} else {
+					q.statuses[status] = struct{}{}
+				}
+				continue
+			}
+		}
+
+		q.terms = append(q.terms, token)
+	}
+
+	return q
+}
+
+func parseStatusToken(value string) (int, bool) {
+	if len(value) == 3 && strings.HasSuffix(value, "xx") {
+		h := int(value[0] - '0')
+		if h >= 1 && h <= 5 {
+			return h * 1000, true
+		}
+	}
+
+	code, err := strconv.Atoi(value)
+	if err != nil || code < 100 || code > 599 {
+		return 0, false
+	}
+
+	return code, true
+}
+
+func requestMatchesQuery(req model.Request, query requestSearchQuery) bool {
+	if len(query.methods) > 0 {
+		method := strings.ToLower(req.Method)
+		matched := false
+		for _, want := range query.methods {
+			if method == want {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return false
+		}
+	}
+
+	if len(query.statuses) > 0 || len(query.statusHuns) > 0 {
+		status := req.Status
+		_, exact := query.statuses[status]
+		_, class := query.statusHuns[status/100]
+		if !exact && !class {
+			return false
+		}
+	}
+
+	if len(query.terms) == 0 {
+		return true
+	}
+
+	haystack := strings.ToLower(req.Host + " " + req.URL + " " + req.RawURL)
+	for _, term := range query.terms {
+		if !strings.Contains(haystack, term) {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (m *Model) moveDetailsTab(delta int) {
